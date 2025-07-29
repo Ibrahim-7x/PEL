@@ -16,7 +16,7 @@
 <section class="features-section py-5 bg-light">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="fw-bold">Why Choose PEL Project?</h2>
+            <h2 class="fw-bold">Why Choose PEL</h2>
             <p class="text-muted">Everything you need to streamline your workflow.</p>
         </div>
         <div class="row g-4">
