@@ -68,4 +68,10 @@
         </div>
     </div>
 </div>
+
+<!-- ⚫ Footer -->
+<footer class="text-center py-4 bg-dark text-white mt-5">
+    <p class="mb-0">&copy; {{ date('Y') }} PEL Project Portal. All rights reserved.</p>
+</footer>
+
 @endsection
