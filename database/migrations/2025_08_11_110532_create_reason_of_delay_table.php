@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['email_verified_at', 'remember_token']);
+        Schema::create('reason_of_delay', function (Blueprint $table) {
+            $table->id();
+            $table->string('reason');
+            $table->unsignedBigInteger('hcs_id');
+            $table->foreign('hcs_id')->references('id')->on('happy_call_status')->onDelete('cascade');
         });
     }
 
@@ -21,9 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('email_verified_at')->nullable();
-            $table->string('remember_token')->nullable();
-        });
+        Schema::dropIfExists('reason_of_delay');
     }
 };

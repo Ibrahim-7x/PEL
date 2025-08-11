@@ -50,6 +50,15 @@
                     <input type="email" class="form-control" name="email" id="email" required placeholder="Enter your email">
                 </div>
 
+                <div class="mb-3">
+                    <label for="role" class="form-label fw-semibold">Role</label>
+                    <select class="form-select" name="role" id="role" required>
+                        <option value="" disabled selected>Select your role</option>
+                        <option value="Management">Management</option>
+                        <option value="Agent">Agent</option>
+                    </select>
+                </div>
+
                 <div class="mb-4">
                     <label for="password" class="form-label fw-semibold">Password</label>
                     <input type="password" class="form-control" name="password" id="password" required placeholder="Enter your password">
