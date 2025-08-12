@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\AgentController;
+use App\Http\Controllers\ManagementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,5 +31,12 @@ Route::post('/logout', function () {
     return redirect()->route('login');
 })->name('logout');
 
-Route::get('/', [HomeController::class, 'index'])->name('home')->middleware('auth');
+Route::middleware(['auth', 'role:Agent'])->group(function () {
+    Route::get('/home-agent', [App\Http\Controllers\AgentController::class, 'index'])->name('agent');
+});
+
+Route::middleware(['auth', 'role:Management'])->group(function () {
+    Route::get('/home-management', [App\Http\Controllers\ManagementController::class, 'index'])->name('management');
+});
+
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');

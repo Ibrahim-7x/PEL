@@ -7,22 +7,10 @@ use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
-use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Login Controller
-    |--------------------------------------------------------------------------
-    |
-    | This controller handles authenticating users for the application and
-    | redirecting them to your home screen. The controller uses a trait
-    | to conveniently provide its functionality to your applications.
-    |
-    */
-
     use AuthenticatesUsers;
 
     /**
@@ -30,7 +18,22 @@ class LoginController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/';
+    protected function redirectTo()
+    {
+        $role = auth()->user()->role;
+
+        if ($role === 'Agent') 
+            {
+            return '/home-agent';
+        } 
+        elseif ($role === 'Management') 
+            {
+            return '/home-management';
+        }
+
+        // fallback
+        return '/home';
+    }
 
     public function showLoginForm()
     {
@@ -61,8 +64,8 @@ class LoginController extends Controller
             ]);
         }
 
-        // Redirect on success
-        return redirect()->intended('/');
+        // Redirect based on role
+        return redirect($this->redirectTo());
     }
 
     public function logout(Request $request)
@@ -73,16 +76,11 @@ class LoginController extends Controller
         return redirect('/login')->with('status', 'Logged out successfully!');
     }
 
-    protected function loggedOut(\Illuminate\Http\Request $request)
+    protected function loggedOut(Request $request)
     {
         return redirect('/login')->with('success', 'You have been logged out successfully.');
     }
 
-    /**
-     * Create a new controller instance.
-     *
-     * @return void
-     */
     public function __construct()
     {
         $this->middleware('guest')->except('logout');

@@ -11,8 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('reason_of_escalation', function (Blueprint $table) {
-            $table->id();
+        Schema::table('reason_of_escalation', function (Blueprint $table) {
             $table->string('reason');
         });
     }
@@ -22,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('reason_of_escalation');
+        Schema::table('reason_of_escalation', function (Blueprint $table) {
+            //
+        });
     }
 };
