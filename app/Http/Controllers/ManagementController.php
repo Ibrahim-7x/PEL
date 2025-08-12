@@ -20,7 +20,7 @@ class ManagementController extends Controller
     {
         $this->middleware('auth');
     }
-
+    
     public function index()
     {
         $serviceCenters = ServiceCenter::orderBy('sc_name')->get();
@@ -37,4 +37,5 @@ class ManagementController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
+
 }

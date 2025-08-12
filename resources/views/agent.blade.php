@@ -71,7 +71,8 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Ticket No</label>
-                    <input type="text" name="ticket_no" class="form-control" required>
+                    <input type="text" name="ticket_no" class="form-control" required
+                        onblur="this.value = this.value.trim();">
                 </div>
                 <div class="col-md-6">
                     <label for="service_center" class="form-label fw-semibold">Service Center</label>

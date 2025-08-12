@@ -68,7 +68,7 @@
                     <select name="reason_of_escalation_id" id="reason_of_escalation" class="form-control" required>
                         <option value="">-- Select Reason of Escalation --</option>
                         @foreach($reasonofEscalation as $reason)
-                            <option value="{{ $reason->id }}">{{ $reason->reason }}</option>
+                        <option value="{{ $reason->id }}">{{ $reason->reason }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -91,61 +91,59 @@
                 <button type="submit" class="btn btn-primary px-5">Submit</button>
             </div>
             <hr class="my-4">
-            
-            <!-- Customer Detail From COMS -->
-            <h5 class="mb-3 text-warning">Customer Detail From COMS</h5>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Complaint #</label>
-                    <input type="text" name="complaint_number" class="form-control">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Job #</label>
-                    <input type="text" name="job_number" class="form-control" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">COMS Complaint Date</label>
-                    <input type="date" name="coms_complaint_date" class="form-control" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Job Type</label>
-                    <input type="text" name="job_type" class="form-control" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Customer Name</label>
-                    <input type="text" name="customer_name" class="form-control" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Contact No</label>
-                    <input type="text" name="contact_no" class="form-control" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Technician Name</label>
-                    <input type="text" name="technician_name" class="form-control" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Date of Purchase</label>
-                    <input type="date" name="purchase_date" class="form-control" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Product</label>
-                    <input type="text" name="product" class="form-control" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Job Status</label>
-                    <input type="text" name="job_status" class="form-control" readonly>
-                </div>
-                <div class="col-12">
-                    <label class="form-label fw-semibold">Problem</label>
-                    <input name="problem" rows="2" class="form-control" readonly>
-                </div>
-                <div class="col-12">
-                    <label class="form-label fw-semibold">Work Done</label>
-                    <input name="workdone" rows="2" class="form-control" readonly>
-                </div>
-            </div>
-
         </form>
+        <!-- Customer Detail From COMS -->
+        <h5 class="mb-3 text-warning">Customer Detail From COMS</h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Complaint #</label>
+                <input type="text" name="complaint_number" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Job #</label>
+                <input type="text" name="job_number" class="form-control" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">COMS Complaint Date</label>
+                <input type="date" name="coms_complaint_date" class="form-control" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Job Type</label>
+                <input type="text" name="job_type" class="form-control" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Customer Name</label>
+                <input type="text" name="customer_name" class="form-control" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Contact No</label>
+                <input type="text" name="contact_no" class="form-control" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Technician Name</label>
+                <input type="text" name="technician_name" class="form-control" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Date of Purchase</label>
+                <input type="date" name="purchase_date" class="form-control" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Product</label>
+                <input type="text" name="product" class="form-control" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Job Status</label>
+                <input type="text" name="job_status" class="form-control" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold">Problem</label>
+                <input name="problem" rows="2" class="form-control" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold">Work Done</label>
+                <input name="workdone" rows="2" class="form-control" readonly>
+            </div>
+        </div>
     </div>
 </section>
 

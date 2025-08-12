@@ -34,4 +34,31 @@ class AgentController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
+
+    public function store(Request $request)
+    {
+        // Validate inputs
+        $validated = $request->validate([
+            'ticket_no' => 'required|string|max:50',
+            'service_center' => 'required|string',
+            'complaint_escalation_date' => 'required|date',
+            'case_status' => 'required|integer',
+            'complaint_category' => 'required|integer',
+            'aging' => 'required|integer',
+            'name' => 'required|string',
+            'reason_of_escalation' => 'required|integer',
+            'escalation_level' => 'required|string',
+            'voice_of_customer' => 'required|string',
+        ]);
+
+        // Trim ticket_no
+        $ticketNo = trim($validated['ticket_no']);
+
+        // Save to database
+        InitialCustomerInformation::create([
+            'ticket_no' => $ticketNo,
+        ]);
+
+        return redirect()->back()->with('success', 'Customer information saved successfully.');
+    }
 }

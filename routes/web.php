@@ -32,8 +32,10 @@ Route::post('/logout', function () {
 })->name('logout');
 
 Route::middleware(['auth', 'role:Agent'])->group(function () {
-    Route::get('/home-agent', [App\Http\Controllers\AgentController::class, 'index'])->name('agent');
+    Route::match(['get', 'post'], '/home-agent', [App\Http\Controllers\AgentController::class, 'index', 'store'])
+        ->name('agent');
 });
+
 
 Route::middleware(['auth', 'role:Management'])->group(function () {
     Route::get('/home-management', [App\Http\Controllers\ManagementController::class, 'index'])->name('management');
