@@ -38,40 +38,35 @@ class AgentController extends Controller
      * @return \Illuminate\Contracts\Support\Renderable
      */
 
+
     public function store(Request $request)
     {
-        // Validate inputs
-        $validated = $request->validate([
-            'ticket_no' => 'required|string|max:50',
-            'service_center' => 'required|string',
-            'complaint_escalation_date' => 'required|date',
-            'case_status' => 'required|integer',
-            'complaint_category' => 'required|integer',
-            'agent_name' => 'required|string',
-            'reason_of_escalation' => 'required|integer',
-            'escalation_level' => 'required|string',
-            'voice_of_customer' => 'required|string',
-        ]);
+        try {
+            // Optional: Pre-check before inserting
+            if (InitialCustomerInformation::where('ticket_no', $request->ticket_no)->exists()) {
+                return back()->withErrors(['ticket_no' => 'This ticket number already exists. Please use a different one.'])->withInput();
+            }
 
-        // Trim ticket_no
-        $ticketNo = trim($validated['ticket_no']);
+            InitialCustomerInformation::create([
+                'ticket_no' => $request->ticket_no,
+                'service_center' => $request->service_center,
+                'complaint_escalation_date' => $request->complaint_escalation_date,
+                'case_status' => $request->case_status,
+                'complaint_category' => $request->complaint_category,
+                'agent_name' => $request->agent_name,
+                'reason_of_escalation' => $request->reason_of_escalation,
+                'escalation_level' => $request->escalation_level,
+                'voice_of_customer' => $request->voice_of_customer,
+                'u_id' => auth()->id(),
+            ]);
 
-        // Save to database
-        InitialCustomerInformation::create([
-            'ticket_no' => $request->ticket_no,
-            'service_center' => $request->service_center,
-            'complaint_escalation_date' => $request->complaint_escalation_date,
-            'case_status' => $request->case_status,
-            'complaint_category' => $request->complaint_category,
-            'agent_name' => $request->agent_name,
-            'reason_of_escalation' => $request->reason_of_escalation,
-            'escalation_level' => $request->escalation_level,
-            'voice_of_customer' => $request->voice_of_customer,
-            'u_id' => auth()->id(),
-        ]);
-
-        return redirect()->back()->with('success', 'Data saved!');
-
-        return redirect()->back()->with('success', 'Customer information saved successfully.');
+            return redirect()->back()->with('success', 'Record saved successfully.');
+        } 
+        catch (QueryException $e) {
+            if ($e->errorInfo[1] == 1062) { // Duplicate entry error code
+                return back()->withErrors(['ticket_no' => 'This ticket number already exists. Please use a different one.'])->withInput();
+            }
+            throw $e; // rethrow for other errors
+        }
     }
 }

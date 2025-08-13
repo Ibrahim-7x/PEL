@@ -62,7 +62,8 @@
                 <input name="workdone" rows="2" class="form-control" readonly>
             </div>
         </div>
-
+        
+        <hr class="my-4">
         {{-- Success Message --}}
         @if(session('success'))
             <div class="alert alert-success">
@@ -80,8 +81,6 @@
                 </ul>
             </div>
         @endif
-
-        <hr class="my-4">
         <form action="{{ route('agent.store') }}" method="POST" class="p-4 shadow rounded bg-white">
             @csrf
             <!-- Initial Customer Information -->
@@ -97,7 +96,7 @@
                     <select name="service_center" id="service_center" class="form-control" required>
                         <option value="">-- Select Service Center --</option>
                         @foreach($serviceCenters as $center)
-                            <option value="{{ $center->id }}">{{ $center->sc_name }}</option>
+                            <option value="{{ $center->sc_name }}">{{ $center->sc_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -115,7 +114,7 @@
                     <select name="case_status" id="case_status" class="form-control" required>
                         <option value="">-- Select Case Status --</option>
                         @foreach($caseStatus as $status)
-                            <option value="{{ $status->id }}">{{ $status->status }}</option>
+                            <option value="{{ $status->status }}">{{ $status->status }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -125,7 +124,7 @@
                     <select name="complaint_category" id="complaint_category" class="form-control" required>
                         <option value="">-- Select Complaint Category --</option>
                         @foreach($complaintCategory as $category)
-                            <option value="{{ $category->id }}">{{ $category->category_name }}</option>
+                            <option value="{{ $category->category_name }}">{{ $category->category_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -142,7 +141,7 @@
                     <select name="reason_of_escalation" id="reason_of_escalation" class="form-control" required>
                         <option value="">-- Select Reason of Escalation --</option>
                         @foreach($reasonofEscalation as $reason)
-                            <option value="{{ $reason->id }}">{{ $reason->reason }}</option>
+                            <option value="{{ $reason->reason }}">{{ $reason->reason }}</option>
                         @endforeach
                     </select>
                 </div>
