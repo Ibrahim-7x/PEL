@@ -63,8 +63,26 @@
             </div>
         </div>
 
+        {{-- Success Message --}}
+        @if(session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        {{-- Error Messages --}}
+        @if ($errors->any())
+            <div class="alert alert-danger">
+                <ul>
+                    @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <hr class="my-4">
-        <form action="{{ route('agent') }}" method="POST" class="p-4 shadow rounded bg-white">
+        <form action="{{ route('agent.store') }}" method="POST" class="p-4 shadow rounded bg-white">
             @csrf
             <!-- Initial Customer Information -->
             <h5 class="mb-3 text-primary">Initial Customer Information</h5>
@@ -76,7 +94,7 @@
                 </div>
                 <div class="col-md-6">
                     <label for="service_center" class="form-label fw-semibold">Service Center</label>
-                    <select name="service_center_id" id="service_center" class="form-control" required>
+                    <select name="service_center" id="service_center" class="form-control" required>
                         <option value="">-- Select Service Center --</option>
                         @foreach($serviceCenters as $center)
                             <option value="{{ $center->id }}">{{ $center->sc_name }}</option>
@@ -84,17 +102,17 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label for="complaint_date" class="form-label fw-semibold">Complaint Escalation Date</label>
+                    <label for="complaint_escalation_date" class="form-label fw-semibold">Complaint Escalation Date</label>
                     <input type="date" 
                         class="form-control" 
-                        name="complaint_date" 
-                        id="complaint_date" 
+                        name="complaint_escalation_date" 
+                        id="complaint_escalation_date" 
                         value="{{ now()->format('Y-m-d') }}" 
                         readonly>
                 </div>
                 <div class="col-md-3">
                     <label for="case_status" class="form-label fw-semibold">Case Status</label>
-                    <select name="case_status_id" id="case_status" class="form-control" required>
+                    <select name="case_status" id="case_status" class="form-control" required>
                         <option value="">-- Select Case Status --</option>
                         @foreach($caseStatus as $status)
                             <option value="{{ $status->id }}">{{ $status->status }}</option>
@@ -104,7 +122,7 @@
                 
                 <div class="col-md-6">
                     <label for="complaint_category" class="form-label fw-semibold">Complaint Category</label>
-                    <select name="complaint_category_id" id="complaint_category" class="form-control" required>
+                    <select name="complaint_category" id="complaint_category" class="form-control" required>
                         <option value="">-- Select Complaint Category --</option>
                         @foreach($complaintCategory as $category)
                             <option value="{{ $category->id }}">{{ $category->category_name }}</option>
@@ -112,16 +130,16 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label for="name" class="form-label fw-semibold">Agent Name</label>
+                    <label for="agent_name" class="form-label fw-semibold">Agent Name</label>
                     @if(auth()->user()->role === 'Agent')
-                        <input type="text" class="form-control" name="name" id="name" 
+                        <input type="text" class="form-control" name="agent_name" id="agent_name" 
                             value="{{ auth()->user()->name }}" readonly>
                     @endif
                 </div>
                 
                 <div class="col-md-6">
                     <label for="reason_of_escalation" class="form-label fw-semibold">Reason of Escalation</label>
-                    <select name="reason_of_escalation_id" id="reason_of_escalation" class="form-control" required>
+                    <select name="reason_of_escalation" id="reason_of_escalation" class="form-control" required>
                         <option value="">-- Select Reason of Escalation --</option>
                         @foreach($reasonofEscalation as $reason)
                             <option value="{{ $reason->id }}">{{ $reason->reason }}</option>
@@ -139,7 +157,7 @@
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-semibold">Voice of Customer</label>
-                    <textarea name="voice_customer" rows="3" class="form-control"></textarea>
+                    <textarea name="voice_of_customer" rows="3" class="form-control"></textarea>
                 </div>
             </div>
             

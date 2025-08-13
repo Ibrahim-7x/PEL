@@ -36,6 +36,14 @@ Route::middleware(['auth', 'role:Agent'])->group(function () {
         ->name('agent');
 });
 
+Route::middleware(['auth', 'role:Agent'])->group(function () {
+    // For displaying the form
+    Route::get('/home-agent', [App\Http\Controllers\AgentController::class, 'index'])->name('agent.index');
+
+    // For saving form data
+    Route::post('/home-agent', [App\Http\Controllers\AgentController::class, 'store'])->name('agent.store');
+});
+
 
 Route::middleware(['auth', 'role:Management'])->group(function () {
     Route::get('/home-management', [App\Http\Controllers\ManagementController::class, 'index'])->name('management');
