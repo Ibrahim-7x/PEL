@@ -32,17 +32,26 @@ Route::post('/logout', function () {
 })->name('logout');
 
 Route::middleware(['auth', 'role:Agent'])->group(function () {
-    Route::match(['get', 'post'], '/home-agent', [App\Http\Controllers\AgentController::class, 'index', 'store'])
-        ->name('agent');
+    Route::get('/home-agent', [AgentController::class, 'index'])->name('agent.index');
+    Route::post('/home-agent', [AgentController::class, 'store'])->name('agent.store');
 });
 
 Route::middleware(['auth', 'role:Agent'])->group(function () {
-    // For displaying the form
+
     Route::get('/home-agent', [App\Http\Controllers\AgentController::class, 'index'])->name('agent.index');
 
-    // For saving form data
     Route::post('/home-agent', [App\Http\Controllers\AgentController::class, 'store'])->name('agent.store');
+
 });
+
+Route::get('/home-agent/ticket/{ticket_no}', [AgentController::class, 'showTicket'])
+    ->middleware(['auth', 'role:Agent'])
+    ->name('agent.ticket');
+
+// Post feedback for that ticket
+Route::post('/home-agent/ticket/{ticket_no}/feedback', [AgentController::class, 'storeFeedback'])
+    ->middleware(['auth', 'role:Agent'])
+    ->name('agent.feedback.store');
 
 
 Route::middleware(['auth', 'role:Management'])->group(function () {

@@ -20,4 +20,9 @@ class InitialCustomerInformation extends Model
         'escalation_level',
         'voice_of_customer',
     ];
+
+    public function feedbacks()
+    {
+        return $this->hasMany(Feedback::class, 'ici_id');
+    }
 }
