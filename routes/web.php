@@ -22,11 +22,11 @@ Route::get('/profile', function () {
 Route::middleware(['auth', 'role:Agent'])->group(function () {
     Route::get('/home-agent', [AgentController::class, 'index'])->name('agent.index');
     Route::post('/home-agent', [AgentController::class, 'store'])->name('agent.store');
-    
     Route::get('/home-agent/ticket/{ticket_no}', [AgentController::class, 'showTicket'])->name('agent.ticket');
     Route::post('/home-agent/ticket/{ticket_no}/feedback', [AgentController::class, 'storeFeedback'])->name('agent.feedback.store');
     Route::post('/home-agent/search-ticket', [App\Http\Controllers\AgentController::class, 'searchTicket'])->name('ticket.search');
     Route::get('/home-agent/ticket/{ticket_no}/feedbacks', [AgentController::class, 'getFeedbacks'])->name('agent.feedback.list');
+    Route::post('/home-agent/happy-call-status', [App\Http\Controllers\AgentController::class, 'saveHappyCallStatus'])->name('agent.happy_call_status');
 });
 
 // Management routes

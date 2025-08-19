@@ -7,6 +7,23 @@
 <!-- 📝 RU CASE Form Section -->
 <section class="py-5 bg-light">
     <div class="container">
+        {{-- Success Message --}}
+        @if(session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+        
+        {{-- Error Messages --}}
+        @if ($errors->any())
+            <div class="alert alert-danger">
+                <ul>
+                    @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <h2 class="fw-bold mb-4 text-center">RU CASE</h2>
         
         <!-- Customer Detail From COMS -->
@@ -14,7 +31,12 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Complaint #</label>
-                <input type="text" name="complaint_number" class="form-control">
+                <div class="input-group">
+                    <input type="text" id="complaint_number" name="complaint_number" class="form-control">
+                    <button type="button" id="searchComplaintBtn" class="btn btn-primary">
+                        <i class="bi bi-search"></i> <!-- Bootstrap Icon -->
+                    </button>
+                </div>
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Job #</label>
@@ -64,24 +86,6 @@
         
         <hr class="my-4">
         <!-- Initial Customer Information -->
-
-        {{-- Success Message --}}
-        @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-        @endif
-        
-        {{-- Error Messages --}}
-        @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-        @endif
         <form action="{{ route('agent.store') }}" method="POST" class="p-4 shadow rounded bg-white">
             @csrf
             <h5 class="mb-3 text-primary">Initial Customer Information</h5>
@@ -187,7 +191,7 @@
                 @else
                     {{-- Chat header --}}
                     <div class="d-flex align-items-center mb-4">
-                        <a href="javascript:void(0)" class="btn btn-light me-2" onclick="goBackToSearch()">← Back</a>
+                        <a href="javascript:void(0)" class="btn btn-light me-2" onclick="goBackToSearch()">←</a>
                         <h4 class="mb-0">Ticket #{{ $ici->ticket_no }}</h4>
                     </div>
 
@@ -242,86 +246,6 @@
                         </div>
                     </div>
                     <script>
-                        function goBackToSearch() {
-                            fetch("{{ route('agent.index') }}")
-                                .then(response => response.text())
-                                .then(html => {
-                                    const parser = new DOMParser();
-                                    const doc = parser.parseFromString(html, 'text/html');
-                                    const newContent = doc.querySelector('#chatArea');
-                                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
-                                });
-                        }
-
-                        // Intercept ticket search form submit
-                        document.addEventListener('submit', function(e) {
-                            if (e.target && e.target.id === 'ticketSearchForm') {
-                                e.preventDefault(); // stop full reload
-
-                                const form = e.target;
-                                const formData = new FormData(form);
-                                const url = form.action + '?' + new URLSearchParams(formData).toString();
-
-                                fetch(url)
-                                .then(response => response.text())
-                                .then(html => {
-                                    const parser = new DOMParser();
-                                    const doc = parser.parseFromString(html, 'text/html');
-                                    const newContent = doc.querySelector('#chatArea');
-                                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
-                                });
-                            }
-                        });
-
-                        // Auto-scroll on load
-                        window.addEventListener('load', function () {
-                            var box = document.getElementById('chatScrollArea');
-                            if (box) { box.scrollTop = box.scrollHeight; }
-                        });
-
-                        document.addEventListener('submit', function(e) {
-                            if (e.target && e.target.id === 'chatForm') {
-                                e.preventDefault();
-
-                                const form = e.target;
-                                const formData = new FormData(form);
-
-                                fetch(form.action, {
-                                    method: 'POST',
-                                    body: formData,
-                                    headers: {
-                                        'X-Requested-With': 'XMLHttpRequest',
-                                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value
-                                    }
-                                })
-                                .then(res => res.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        // Append new message bubble (right side "You")
-                                        const chatBox = document.getElementById('chatScrollArea');
-                                        const bubble = document.createElement('div');
-                                        bubble.classList.add('d-flex', 'justify-content-end', 'mb-3');
-                                        bubble.innerHTML = `
-                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
-                                                <div class="fw-semibold mb-1">You <span class="text-muted">(${data.role})</span></div>
-                                                <div>${data.message}</div>
-                                                <div class="mt-1"><small class="text-muted">${data.time}</small></div>
-                                            </div>
-                                        `;
-                                        chatBox.appendChild(bubble);
-                                        chatBox.scrollTop = chatBox.scrollHeight; // auto-scroll
-
-                                        // Reset input
-                                        document.getElementById('chatMessage').value = '';
-                                    } else if (data.error) {
-                                        alert(data.error);
-                                    }
-                                })
-                                .catch(err => console.error(err));
-                            }
-                        });
-                        let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
-
                         function fetchNewFeedbacks() 
                         {
                             fetch("{{ route('agent.feedback.list', $ici->ticket_no) }}")
@@ -345,7 +269,6 @@
                                                 <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
                                             </div>
                                         `;
-
                                         chatBox.appendChild(bubble);
                                         chatBox.scrollTop = chatBox.scrollHeight;
                                         lastFeedbackId = fb.id;
@@ -359,7 +282,160 @@
                 @endif
             </div>
         </div>
+        <div class="card mt-4">
+            <div class="card-header text-center fw-bold" style="background-color: #cceeff;">
+                Happy Call Status
+            </div>
+            <div class="card-body p-0">
+                <form method="POST" action="{{ route('agent.happy_call_status') }}">
+                    @csrf
+                    <table class="table mb-0" style="background-color: #e6f7ff;">
+                        <tr>
+                            <td class="fw-semibold">Case Resolved Date</td>
+                            <td>
+                                <input type="date" name="resolved_date" class="form-control" required>
+                            </td>
+                            <td class="fw-semibold">Happy Call Date</td>
+                            <td>
+                                <input type="date" name="happy_call_date" class="form-control" required>
+                            </td>
+                            <td class="fw-semibold">Customer Satisfied</td>
+                            <td>
+                                <select name="customer_satisfied" class="form-select" required>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold">Reasons of Delay <br>(Expert Opinion)</td>
+                            <td colspan="5">
+                                <textarea name="delay_reason" class="form-control" rows="2"></textarea>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold">Voice of Customer</td>
+                            <td colspan="5">
+                                <textarea name="voice_of_customer" class="form-control" rows="2"></textarea>
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="p-3 text-end">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
+    <script>
+        document.getElementById('searchComplaintBtn').addEventListener('click', function () {
+            let complaintNo = document.getElementById('complaint_number').value;
+            if (complaintNo.trim() !== "") {
+                fetch(`/api/get-complaint/${complaintNo}`) // <-- Your Laravel API endpoint
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data) {
+                            document.getElementById('job_number').value = data.job_number || '';
+                            document.getElementById('coms_complaint_date').value = data.coms_complaint_date || '';
+                            document.getElementById('job_type').value = data.job_type || '';
+                            document.getElementById('customer_name').value = data.customer_name || '';
+                            document.getElementById('contact_no').value = data.contact_no || '';
+                            document.getElementById('technician_name').value = data.technician_name || '';
+                            document.getElementById('purchase_date').value = data.purchase_date || '';
+                            document.getElementById('product').value = data.product || '';
+                            document.getElementById('job_status').value = data.job_status || '';
+                            document.getElementById('problem').value = data.problem || '';
+                            document.getElementById('workdone').value = data.workdone || '';
+                        } else {
+                            alert("No record found for this Complaint #");
+                        }
+                    })
+                    .catch(error => console.error('Error fetching data:', error));
+            } else {
+                alert("Please enter a Complaint #");
+            }
+        });
+
+        function goBackToSearch() {
+            fetch("{{ route('agent.index') }}")
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('#chatArea');
+                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
+                });
+        }
+
+        // Intercept ticket search form submit
+        document.addEventListener('submit', function(e) {
+            if (e.target && e.target.id === 'ticketSearchForm') {
+                e.preventDefault(); // stop full reload
+
+                const form = e.target;
+                const formData = new FormData(form);
+                const url = form.action + '?' + new URLSearchParams(formData).toString();
+
+                fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('#chatArea');
+                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
+                });
+            }
+        });
+
+        // Auto-scroll on load
+        window.addEventListener('load', function () {
+            var box = document.getElementById('chatScrollArea');
+            if (box) { box.scrollTop = box.scrollHeight; }
+        });
+
+        document.addEventListener('submit', function(e) {
+            if (e.target && e.target.id === 'chatForm') {
+                e.preventDefault();
+
+                const form = e.target;
+                const formData = new FormData(form);
+
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Append new message bubble (right side "You")
+                        const chatBox = document.getElementById('chatScrollArea');
+                        const bubble = document.createElement('div');
+                        bubble.classList.add('d-flex', 'justify-content-end', 'mb-3');
+                        bubble.innerHTML = `
+                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
+                                <div class="fw-semibold mb-1">You <span class="text-muted">(${data.role})</span></div>
+                                <div>${data.message}</div>
+                                <div class="mt-1"><small class="text-muted">${data.time}</small></div>
+                            </div>
+                        `;
+                        chatBox.appendChild(bubble);
+                        chatBox.scrollTop = chatBox.scrollHeight; // auto-scroll
+
+                        // Reset input
+                        document.getElementById('chatMessage').value = '';
+                    } else if (data.error) {
+                        alert(data.error);
+                    }
+                })
+                .catch(err => console.error(err));
+            }
+        });
+        let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
+    </script>
 </section>
 
 <footer class="text-center py-4 bg-dark text-white mt-5">

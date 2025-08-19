@@ -224,124 +224,125 @@
                         </div>
                     </div>
                     <script>
-                        function goBackToSearch() {
-                            fetch("{{ route('management.index') }}")
-                                .then(response => response.text())
-                                .then(html => {
-                                    const parser = new DOMParser();
-                                    const doc = parser.parseFromString(html, 'text/html');
-                                    const newContent = doc.querySelector('#chatArea');
-                                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
-                                });
-                        }
-
-                        // Intercept ticket search form submit
-                        document.addEventListener('submit', function(e) {
-                            if (e.target && e.target.id === 'ticketSearchForm') {
-                                e.preventDefault(); // stop full reload
-
-                                const form = e.target;
-                                const formData = new FormData(form);
-                                const url = form.action + '?' + new URLSearchParams(formData).toString();
-
-                                fetch(url)
-                                .then(response => response.text())
-                                .then(html => {
-                                    const parser = new DOMParser();
-                                    const doc = parser.parseFromString(html, 'text/html');
-                                    const newContent = doc.querySelector('#chatArea');
-                                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
-                                });
-                            }
-                        });
-
-                        // Auto-scroll on load
-                        window.addEventListener('load', function () {
-                            var box = document.getElementById('chatScrollArea');
-                            if (box) { box.scrollTop = box.scrollHeight; }
-                        });
-
-                        document.addEventListener('submit', function(e) {
-                            if (e.target && e.target.id === 'chatForm') {
-                                e.preventDefault();
-
-                                const form = e.target;
-                                const formData = new FormData(form);
-
-                                fetch(form.action, {
-                                    method: 'POST',
-                                    body: formData,
-                                    headers: {
-                                        'X-Requested-With': 'XMLHttpRequest',
-                                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value
-                                    }
-                                })
-                                .then(res => res.json())
+                        function fetchNewFeedbacks() 
+                            {
+                                fetch("{{ route('management.feedback.list', $ici->ticket_no) }}")
+                                .then(response => response.json())
                                 .then(data => {
-                                    if (data.success) {
-                                        // Append new message bubble (right side "You")
-                                        const chatBox = document.getElementById('chatScrollArea');
-                                        const bubble = document.createElement('div');
-                                        bubble.classList.add('d-flex', 'justify-content-end', 'mb-3');
-                                        bubble.innerHTML = `
-                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
-                                                <div class="fw-semibold mb-1">You <span class="text-muted">(${data.role})</span></div>
-                                                <div>${data.message}</div>
-                                                <div class="mt-1"><small class="text-muted">${data.time}</small></div>
-                                            </div>
-                                        `;
-                                        chatBox.appendChild(bubble);
-                                        chatBox.scrollTop = chatBox.scrollHeight; // auto-scroll
+                                    const chatBox = document.getElementById('chatScrollArea');
 
-                                        // Reset input
-                                        document.getElementById('chatMessage').value = '';
-                                    } else if (data.error) {
-                                        alert(data.error);
-                                    }
+                                    data.forEach(fb => {
+                                        if (fb.id > lastFeedbackId) {
+                                            const isMe = fb.name === "{{ auth()->user()->name }}";
+
+                                            const bubble = document.createElement('div');
+                                            bubble.classList.add('d-flex', isMe ? 'justify-content-end' : 'justify-content-start', 'mb-3');
+
+                                            bubble.innerHTML = `
+                                                <div class="p-2 rounded-3" style="max-width: 70%; background-color: ${isMe ? '#d1e7dd' : '#e2e3e5'};">
+                                                    <div class="fw-semibold mb-1">
+                                                        ${isMe ? 'You' : fb.name} <span class="text-muted">(${fb.role})</span>
+                                                    </div>
+                                                    <div>${fb.message}</div>
+                                                    <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
+                                                </div>
+                                            `;
+
+                                            chatBox.appendChild(bubble);
+                                            chatBox.scrollTop = chatBox.scrollHeight;
+                                            lastFeedbackId = fb.id;
+                                        }
+                                    });
                                 })
                                 .catch(err => console.error(err));
                             }
-                        });
-                        let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
-
-                        function fetchNewFeedbacks() 
-                        {
-                            fetch("{{ route('management.feedback.list', $ici->ticket_no) }}")
-                            .then(response => response.json())
-                            .then(data => {
-                                const chatBox = document.getElementById('chatScrollArea');
-
-                                data.forEach(fb => {
-                                    if (fb.id > lastFeedbackId) {
-                                        const isMe = fb.name === "{{ auth()->user()->name }}";
-
-                                        const bubble = document.createElement('div');
-                                        bubble.classList.add('d-flex', isMe ? 'justify-content-end' : 'justify-content-start', 'mb-3');
-
-                                        bubble.innerHTML = `
-                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: ${isMe ? '#d1e7dd' : '#e2e3e5'};">
-                                                <div class="fw-semibold mb-1">
-                                                    ${isMe ? 'You' : fb.name} <span class="text-muted">(${fb.role})</span>
-                                                </div>
-                                                <div>${fb.message}</div>
-                                                <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
-                                            </div>
-                                        `;
-
-                                        chatBox.appendChild(bubble);
-                                        chatBox.scrollTop = chatBox.scrollHeight;
-                                        lastFeedbackId = fb.id;
-                                    }
-                                });
-                            })
-                            .catch(err => console.error(err));
-                        }
-                        setInterval(fetchNewFeedbacks, 5000);
-                    </script>
+                            setInterval(fetchNewFeedbacks, 5000);
+                        </script>
                 @endif
             </div>
         </div>
     </div>
+    <script>
+        function goBackToSearch() {
+            fetch("{{ route('management.index') }}")
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('#chatArea');
+                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
+                });
+        }
+
+        // Intercept ticket search form submit
+        document.addEventListener('submit', function(e) {
+            if (e.target && e.target.id === 'ticketSearchForm') {
+                e.preventDefault(); // stop full reload
+
+                const form = e.target;
+                const formData = new FormData(form);
+                const url = form.action + '?' + new URLSearchParams(formData).toString();
+
+                fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('#chatArea');
+                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
+                });
+            }
+        });
+
+        // Auto-scroll on load
+        window.addEventListener('load', function () {
+            var box = document.getElementById('chatScrollArea');
+            if (box) { box.scrollTop = box.scrollHeight; }
+        });
+
+        document.addEventListener('submit', function(e) {
+            if (e.target && e.target.id === 'chatForm') {
+                e.preventDefault();
+
+                const form = e.target;
+                const formData = new FormData(form);
+
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Append new message bubble (right side "You")
+                        const chatBox = document.getElementById('chatScrollArea');
+                        const bubble = document.createElement('div');
+                        bubble.classList.add('d-flex', 'justify-content-end', 'mb-3');
+                        bubble.innerHTML = `
+                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
+                                <div class="fw-semibold mb-1">You <span class="text-muted">(${data.role})</span></div>
+                                <div>${data.message}</div>
+                                <div class="mt-1"><small class="text-muted">${data.time}</small></div>
+                            </div>
+                        `;
+                        chatBox.appendChild(bubble);
+                        chatBox.scrollTop = chatBox.scrollHeight; // auto-scroll
+
+                        // Reset input
+                        document.getElementById('chatMessage').value = '';
+                    } else if (data.error) {
+                        alert(data.error);
+                    }
+                })
+                .catch(err => console.error(err));
+            }
+        });
+        let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
+    </script>
 </section>
 
 <!-- ⚫ Footer -->

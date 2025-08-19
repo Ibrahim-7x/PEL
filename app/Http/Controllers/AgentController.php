@@ -11,6 +11,7 @@ use App\Models\CaseStatus;
 use App\Models\EscalationReason;
 use App\Models\InitialCustomerInformation;
 use App\Models\Feedback;
+use App\Models\HappyCallStatus;
 
 class AgentController extends Controller
 {
@@ -204,4 +205,27 @@ class AgentController extends Controller
 
         return response()->json($feedbacks);
     }
+
+    public function saveHappyCallStatus(Request $request)
+    {
+        $request->validate([
+            'resolved_date' => 'required|date',
+            'happy_call_date' => 'required|date',
+            'customer_satisfied' => 'required|string',
+            'delay_reason' => 'nullable|string',
+            'voice_of_customer' => 'nullable|string',
+        ]);
+
+        \App\Models\HappyCallStatus::create([
+            'ici_id' => $request->ici_id,
+            'resolved_date' => $request->resolved_date,
+            'happy_call_date' => $request->happy_call_date,
+            'customer_satisfied' => $request->customer_satisfied,
+            'delay_reason' => $request->delay_reason,
+            'voice_of_customer' => $request->voice_of_customer,
+        ]);
+
+        return redirect()->back()->with('success', 'Happy Call Status saved successfully!');
+    }
+
 }
