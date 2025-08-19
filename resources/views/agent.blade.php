@@ -167,118 +167,201 @@
         
         {{-- Feedback --}}
         <div class="container mt-4">
-
-        {{-- Flash: success --}}
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
-
-        {{-- Flash: validation errors --}}
-        @if($errors->any())
-            <div class="alert alert-danger">
-                <strong>There were some problems with your submission:</strong>
-                <ul class="mb-0 mt-2">
-                    @foreach($errors->all() as $error)
-                        <li>• {{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        {{-- If $ici is not set, show a placeholder/help --}}
-        @if(empty($ici))
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <h5 class="mb-3">Open a Ticket Chat</h5>
-                    <p class="text-muted mb-3">
-                        Select or open a ticket to view and send chat-style feedback.
-                    </p>
-                    {{-- Optional: quick search form to open a ticket by ticket_no --}}
-                    <form method="GET" action="{{ route('agent.index') }}" class="row g-2">
-                        <div class="col-auto">
-                            <input type="text" name="ticket_no" class="form-control" placeholder="Enter Ticket No">
-                        </div>
-                        <div class="col-auto">
-                            <button class="btn btn-primary">Open</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        @else
-            {{-- Chat header --}}
-            <h4 class="mb-4">
-                Ticket #{{ $ici->ticket_no }}
-                <small class="text-muted ms-2">Agent: {{ $ici->agent_name ?? '—' }}</small>
-            </h4>
-
-            {{-- Chat box --}}
-            <div class="card border-0 shadow-sm">
-                <div class="card-body" id="chatScrollArea" style="height: 420px; overflow-y: auto; background-color: #f8f9fa;">
-                    @forelse($feedbacks as $feedback)
-                        @php
-                            $isMe = isset(auth()->user()->name) && $feedback->name === auth()->user()->name;
-                        @endphp
-
-                        @if($isMe)
-                            {{-- Right bubble (current user) --}}
-                            <div class="d-flex justify-content-end mb-3">
-                                <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
-                                    <div class="fw-semibold mb-1">You <span class="text-muted">({{ $feedback->role }})</span></div>
-                                    <div>{{ $feedback->message }}</div>
-                                    <div class="mt-1"><small class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small></div>
+            <div id="chatArea">
+                {{-- Flash messages, errors, ticket search form, chat box --}}
+                @if(empty($ici))
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="mb-3">Open a Ticket Chat</h5>
+                            {{-- Search form --}}
+                            <form id="ticketSearchForm" method="GET" action="{{ route('agent.index') }}" class="row g-2">
+                                <div class="col-auto">
+                                    <input type="text" name="ticket_no" class="form-control" placeholder="Enter Ticket No" required>
                                 </div>
-                            </div>
-                        @else
-                            {{-- Left bubble (others) --}}
-                            <div class="d-flex justify-content-start mb-3">
-                                <div class="p-2 rounded-3" style="max-width: 70%; background-color: #e2e3e5;">
-                                    <div class="fw-semibold mb-1">{{ $feedback->name }} <span class="text-muted">({{ $feedback->role }})</span></div>
-                                    <div>{{ $feedback->message }}</div>
-                                    <div class="mt-1"><small class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small></div>
+                                <div class="col-auto">
+                                    <button class="btn btn-primary">Open</button>
                                 </div>
-                            </div>
-                        @endif
-                    @empty
-                        <p class="text-center text-muted my-5">No feedback yet. Be the first to send a message!</p>
-                    @endforelse
-                </div>
+                            </form>
+                        </div>
+                    </div>
+                @else
+                    {{-- Chat header --}}
+                    <div class="d-flex align-items-center mb-4">
+                        <a href="javascript:void(0)" class="btn btn-light me-2" onclick="goBackToSearch()">← Back</a>
+                        <h4 class="mb-0">Ticket #{{ $ici->ticket_no }}</h4>
+                    </div>
 
-                {{-- Chat input --}}
-                <div class="card-footer bg-white">
-                    <form action="{{ route('agent.feedback.store', $ici->ticket_no) }}" method="POST" class="d-flex gap-2">
-                        @csrf
-                        <input
-                            type="text"
-                            name="message"
-                            class="form-control @error('message') is-invalid @enderror"
-                            placeholder="Type your message…"
-                            autocomplete="off"
-                            required
-                        >
-                        <button type="submit" class="btn btn-primary">Send</button>
-                        @error('message')
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
-                    </form>
-                </div>
+                    {{-- Chat box --}}
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body" id="chatScrollArea" style="height: 420px; overflow-y: auto; background-color: #f8f9fa;">
+                            @forelse($feedbacks as $feedback)
+                                @php
+                                    $isMe = isset(auth()->user()->name) && $feedback->name === auth()->user()->name;
+                                @endphp
+
+                                @if($isMe)
+                                    <div class="d-flex justify-content-end mb-3">
+                                        <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
+                                            <div class="fw-semibold mb-1">You <span class="text-muted">({{ $feedback->role }})</span></div>
+                                            <div>{{ $feedback->message }}</div>
+                                            <div class="mt-1"><small class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small></div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="d-flex justify-content-start mb-3">
+                                        <div class="p-2 rounded-3" style="max-width: 70%; background-color: #e2e3e5;">
+                                            <div class="fw-semibold mb-1">{{ $feedback->name }} <span class="text-muted">({{ $feedback->role }})</span></div>
+                                            <div>{{ $feedback->message }}</div>
+                                            <div class="mt-1"><small class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small></div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @empty
+                                <p class="text-center text-muted my-5">No feedback yet. Be the first to send a message!</p>
+                            @endforelse
+                        </div>
+
+                        {{-- Chat input --}}
+                        <div class="card-footer bg-white">
+                            <form id="chatForm" action="{{ route('agent.feedback.store', $ici->ticket_no) }}" method="POST" class="d-flex gap-2">
+                                @csrf
+                                <input
+                                    type="text"
+                                    name="message"
+                                    id="chatMessage"
+                                    class="form-control @error('message') is-invalid @enderror"
+                                    placeholder="Type your message…"
+                                    autocomplete="off"
+                                    required
+                                >
+                                <button type="submit" class="btn btn-primary">Send</button>
+                                @error('message')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </form>
+                        </div>
+                    </div>
+                    <script>
+                        function goBackToSearch() {
+                            fetch("{{ route('agent.index') }}")
+                                .then(response => response.text())
+                                .then(html => {
+                                    const parser = new DOMParser();
+                                    const doc = parser.parseFromString(html, 'text/html');
+                                    const newContent = doc.querySelector('#chatArea');
+                                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
+                                });
+                        }
+
+                        // Intercept ticket search form submit
+                        document.addEventListener('submit', function(e) {
+                            if (e.target && e.target.id === 'ticketSearchForm') {
+                                e.preventDefault(); // stop full reload
+
+                                const form = e.target;
+                                const formData = new FormData(form);
+                                const url = form.action + '?' + new URLSearchParams(formData).toString();
+
+                                fetch(url)
+                                .then(response => response.text())
+                                .then(html => {
+                                    const parser = new DOMParser();
+                                    const doc = parser.parseFromString(html, 'text/html');
+                                    const newContent = doc.querySelector('#chatArea');
+                                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
+                                });
+                            }
+                        });
+
+                        // Auto-scroll on load
+                        window.addEventListener('load', function () {
+                            var box = document.getElementById('chatScrollArea');
+                            if (box) { box.scrollTop = box.scrollHeight; }
+                        });
+
+                        document.addEventListener('submit', function(e) {
+                            if (e.target && e.target.id === 'chatForm') {
+                                e.preventDefault();
+
+                                const form = e.target;
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value
+                                    }
+                                })
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        // Append new message bubble (right side "You")
+                                        const chatBox = document.getElementById('chatScrollArea');
+                                        const bubble = document.createElement('div');
+                                        bubble.classList.add('d-flex', 'justify-content-end', 'mb-3');
+                                        bubble.innerHTML = `
+                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
+                                                <div class="fw-semibold mb-1">You <span class="text-muted">(${data.role})</span></div>
+                                                <div>${data.message}</div>
+                                                <div class="mt-1"><small class="text-muted">${data.time}</small></div>
+                                            </div>
+                                        `;
+                                        chatBox.appendChild(bubble);
+                                        chatBox.scrollTop = chatBox.scrollHeight; // auto-scroll
+
+                                        // Reset input
+                                        document.getElementById('chatMessage').value = '';
+                                    } else if (data.error) {
+                                        alert(data.error);
+                                    }
+                                })
+                                .catch(err => console.error(err));
+                            }
+                        });
+                        let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
+
+                        function fetchNewFeedbacks() 
+                        {
+                            fetch("{{ route('agent.feedback.list', $ici->ticket_no) }}")
+                            .then(response => response.json())
+                            .then(data => {
+                                const chatBox = document.getElementById('chatScrollArea');
+
+                                data.forEach(fb => {
+                                    if (fb.id > lastFeedbackId) {
+                                        const isMe = fb.name === "{{ auth()->user()->name }}";
+
+                                        const bubble = document.createElement('div');
+                                        bubble.classList.add('d-flex', isMe ? 'justify-content-end' : 'justify-content-start', 'mb-3');
+
+                                        bubble.innerHTML = `
+                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: ${isMe ? '#d1e7dd' : '#e2e3e5'};">
+                                                <div class="fw-semibold mb-1">
+                                                    ${isMe ? 'You' : fb.name} <span class="text-muted">(${fb.role})</span>
+                                                </div>
+                                                <div>${fb.message}</div>
+                                                <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
+                                            </div>
+                                        `;
+
+                                        chatBox.appendChild(bubble);
+                                        chatBox.scrollTop = chatBox.scrollHeight;
+                                        lastFeedbackId = fb.id;
+                                    }
+                                });
+                            })
+                            .catch(err => console.error(err));
+                        }
+                        setInterval(fetchNewFeedbacks, 5000);
+                    </script>
+                @endif
             </div>
-
-            {{-- Auto-scroll to bottom on page load --}}
-            <script>
-                window.addEventListener('load', function () {
-                    var box = document.getElementById('chatScrollArea');
-                    if (box) { box.scrollTop = box.scrollHeight; }
-                });
-            </script>
-        @endif
-    </div>
+        </div>
     </div>
 </section>
 
-<!-- ⚫ Footer -->
 <footer class="text-center py-4 bg-dark text-white mt-5">
     <p class="mb-0">&copy; {{ date('Y') }} PEL Portal. All rights reserved.</p>
 </footer>

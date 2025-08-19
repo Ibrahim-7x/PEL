@@ -27,13 +27,6 @@
         </a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
-                {{-- Show these only if the user IS logged in --}}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url('/about') }}">About Us</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url('/contact') }}">Contact Us</a>
-                </li>
                 {{-- Profile Dropdown --}}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
