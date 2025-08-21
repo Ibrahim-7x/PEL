@@ -225,39 +225,39 @@
                     </div>
                     <script>
                         function fetchNewFeedbacks() 
-                            {
-                                fetch("{{ route('management.feedback.list', $ici->ticket_no) }}")
-                                .then(response => response.json())
-                                .then(data => {
-                                    const chatBox = document.getElementById('chatScrollArea');
+                        {
+                            fetch("{{ route('management.feedback.list', $ici->ticket_no) }}")
+                            .then(response => response.json())
+                            .then(data => {
+                                const chatBox = document.getElementById('chatScrollArea');
 
-                                    data.forEach(fb => {
-                                        if (fb.id > lastFeedbackId) {
-                                            const isMe = fb.name === "{{ auth()->user()->name }}";
+                                data.forEach(fb => {
+                                    if (fb.id > lastFeedbackId) {
+                                        const isMe = fb.name === "{{ auth()->user()->name }}";
 
-                                            const bubble = document.createElement('div');
-                                            bubble.classList.add('d-flex', isMe ? 'justify-content-end' : 'justify-content-start', 'mb-3');
+                                        const bubble = document.createElement('div');
+                                        bubble.classList.add('d-flex', isMe ? 'justify-content-end' : 'justify-content-start', 'mb-3');
 
-                                            bubble.innerHTML = `
-                                                <div class="p-2 rounded-3" style="max-width: 70%; background-color: ${isMe ? '#d1e7dd' : '#e2e3e5'};">
-                                                    <div class="fw-semibold mb-1">
-                                                        ${isMe ? 'You' : fb.name} <span class="text-muted">(${fb.role})</span>
-                                                    </div>
-                                                    <div>${fb.message}</div>
-                                                    <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
+                                        bubble.innerHTML = `
+                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: ${isMe ? '#d1e7dd' : '#e2e3e5'};">
+                                                <div class="fw-semibold mb-1">
+                                                    ${isMe ? 'You' : fb.name} <span class="text-muted">(${fb.role})</span>
                                                 </div>
-                                            `;
+                                                <div>${fb.message}</div>
+                                                <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
+                                            </div>
+                                        `;
 
-                                            chatBox.appendChild(bubble);
-                                            chatBox.scrollTop = chatBox.scrollHeight;
-                                            lastFeedbackId = fb.id;
-                                        }
-                                    });
-                                })
-                                .catch(err => console.error(err));
-                            }
-                            setInterval(fetchNewFeedbacks, 5000);
-                        </script>
+                                        chatBox.appendChild(bubble);
+                                        chatBox.scrollTop = chatBox.scrollHeight;
+                                        lastFeedbackId = fb.id;
+                                    }
+                                });
+                            })
+                            .catch(err => console.error(err));
+                        }
+                        setInterval(fetchNewFeedbacks, 5000);
+                    </script>
                 @endif
             </div>
         </div>
@@ -347,7 +347,7 @@
 
 <!-- ⚫ Footer -->
 <footer class="text-center py-4 bg-dark text-white mt-5">
-    <p class="mb-0">&copy; {{ date('Y') }} PEL Project Portal. All rights reserved.</p>
+    <p class="mb-0">&copy; {{ date('Y') }} PEL. All rights reserved.</p>
 </footer>
 
 @endsection

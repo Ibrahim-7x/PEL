@@ -4,52 +4,112 @@
     <meta charset="UTF-8">
     <title>@yield('title', 'PEL Project')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Animate.css for fade-in effects -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap 5 JavaScript Bundle (REQUIRED for dropdowns to work) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 </head>
 
-<title>
-    @yield('title', 'PEL')
-</title>
-
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light px-4">
-        <a class="navbar-brand" href="{{ auth()->user()->role === 'Agent' ? url('/home-agent') : url('/home-management') }}">
-            <img src="{{ asset('images/pel-latest-logo.png') }}" alt="PEL Logo" width="60" height="60" class="d-inline-block align-text-top">
-        </a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav ms-auto">
-                {{-- Profile Dropdown --}}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}" alt="Avatar" class="rounded-circle" width="32" height="32">
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                        <li>
-                            <a class="dropdown-item" href="{{ route('profile') }}">Go to Profile</a>
-                        </li>
-                        <li>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="dropdown-item">Logout</button>
-                            </form>
-                        </li>
-                    </ul>
-                </li>
-
-            </ul>
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div id="sidebar" class="bg-light border-end vh-100 p-3 position-fixed top-0 start-0 d-flex flex-column overflow-hidden"
+         style="width: 250px; transition: width 0.3s;">
+        
+        <!-- Logo + Text -->
+        <div class="text-center mb-4">
+            <img src="{{ asset('images/logo abacus-1.png') }}" 
+                 alt="PEL Logo" 
+                 id="sidebarLogo"
+                 class="img-fluid mb-2"
+                 style="width:100px; height:100px; object-fit:contain; transition: all 0.3s ease;">
+ 
+            <h5 class="fw-bold text-dark mb-1 sidebar-text">PEL-Abacus</h5>
+            <hr class="mt-3 mb-0 sidebar-text" style="border-top: 2px solid #ddd; width: 80%; margin: 0 auto;">
         </div>
-    </nav>
-    <div class="container mt-4">
-        @yield('content')
+
+        <!-- Sidebar Menu -->
+        <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+                <a class="nav-link {{ request()->is('profile') ? 'active fw-bold' : '' }}" href="{{ url('/profile') }}">
+                    🏠 <span class="sidebar-text">Home</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link {{ request()->is('home-agent') || request()->is('home-management') ? 'active fw-bold' : '' }}" 
+                   href="{{ auth()->user()->role === 'Agent' ? url('/home-agent') : url('/home-management') }}">
+                    📄 <span class="sidebar-text">RU Case Form</span>
+                </a>
+            </li>
+        </ul>
     </div>
+
+    <!-- Main Content -->
+    <div class="flex-grow-1 ms-250" id="mainContent" style="transition: margin-left 0.3s;">
+        <!-- Top Navbar -->
+        <nav class="navbar navbar-light bg-light border-bottom px-3 d-flex justify-content-between align-items-center sticky-top">
+            <!-- Sidebar Toggle Button -->
+            <button class="btn btn-outline-primary" id="toggleSidebar">☰</button>
+
+            <!-- Profile Dropdown -->
+            <div class="dropdown">
+                <a class="d-flex align-items-center text-decoration-none dropdown-toggle" href="#" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <img src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}" alt="Avatar" class="rounded-circle me-2" width="32" height="32">
+                    <strong>{{ Auth::user()->name }}</strong>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                    <li><a class="dropdown-item" href="{{ route('profile') }}">Go to Profile</a></li>
+                    <li>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="dropdown-item">Logout</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Page Content -->
+        <div class="p-4">
+            @yield('content')
+        </div>
+    </div>
+</div>
+
+<!-- Sidebar Toggle JS -->
+<script>
+    document.getElementById("toggleSidebar").addEventListener("click", function () {
+        const sidebar = document.getElementById("sidebar");
+        const mainContent = document.getElementById("mainContent");
+        const logo = document.getElementById("sidebarLogo");
+
+        if (sidebar.style.width === "60px") {
+            // Expand sidebar
+            sidebar.style.width = "250px";
+            mainContent.style.marginLeft = "250px";
+            logo.style.width = "100px";
+            logo.style.height = "100px";
+
+            // Show text
+            setTimeout(() => {
+                sidebar.querySelectorAll(".sidebar-text").forEach(el => el.classList.remove("d-none"));
+            }, 200);
+        } else {
+            // Collapse sidebar
+            sidebar.style.width = "60px";
+            mainContent.style.marginLeft = "60px";
+            logo.style.width = "40px";
+            logo.style.height = "40px";
+
+            // Hide text immediately
+            sidebar.querySelectorAll(".sidebar-text").forEach(el => el.classList.add("d-none"));
+        }
+    });
+</script>
+
+<style>
+    /* Expanded sidebar margin */
+    .ms-250 {
+        margin-left: 250px;
+    }
+</style>
 </body>
 </html>

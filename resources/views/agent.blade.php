@@ -174,10 +174,10 @@
             <div id="chatArea">
                 {{-- Flash messages, errors, ticket search form, chat box --}}
                 @if(empty($ici))
+                    {{-- Show ticket search form --}}
                     <div class="card border-0 shadow-sm">
                         <div class="card-body">
                             <h5 class="mb-3">Open a Ticket Chat</h5>
-                            {{-- Search form --}}
                             <form id="ticketSearchForm" method="GET" action="{{ route('agent.index') }}" class="row g-2">
                                 <div class="col-auto">
                                     <input type="text" name="ticket_no" class="form-control" placeholder="Enter Ticket No" required>
@@ -279,54 +279,52 @@
                         }
                         setInterval(fetchNewFeedbacks, 5000);
                     </script>
-                @endif
+                    @if(!$ici || !$ici->happyCallStatus) 
+                        {{-- Show form only if no happy call exists --}}
+                        <div id="happyCallForm" class="card mt-4">
+                            <div class="card-header text-center fw-bold" style="background-color: #cceeff;">
+                                Happy Call Status
+                            </div>
+                            <div class="card-body p-0">
+                                <form method="POST" action="{{ route('agent.happy-call.save', $ici->ticket_no) }}">
+                                    @csrf
+                                    <table class="table mb-0" style="background-color: #e6f7ff;">
+                                        <tr>
+                                            <td class="fw-semibold">Case Resolved Date</td>
+                                            <td><input type="date" name="resolved_date" class="form-control" required></td>
+                                            <td class="fw-semibold">Happy Call Date</td>
+                                            <td><input type="date" name="happy_call_date" class="form-control" required></td>
+                                            <td class="fw-semibold">Customer Satisfied</td>
+                                            <td>
+                                                <select name="customer_satisfied" class="form-select" required>
+                                                    <option value="Yes">Yes</option>
+                                                    <option value="No">No</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold">Reasons of Delay</td>
+                                            <td colspan="5"><textarea name="delay_reason" class="form-control" rows="2"></textarea></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold">Voice of Customer</td>
+                                            <td colspan="5"><textarea name="voice_of_customer" class="form-control" rows="2"></textarea></td>
+                                        </tr>
+                                    </table>
+                                    <div class="p-3 text-end">
+                                        <button type="submit" class="btn btn-primary">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    @else
+                        <div class="alert alert-success mt-3">
+                            ✅ Happy Call already submitted for this ticket.
+                        </div>
+                    @endif
+                    @endif
+                </div>
             </div>
-        </div>
-        <div class="card mt-4">
-            <div class="card-header text-center fw-bold" style="background-color: #cceeff;">
-                Happy Call Status
-            </div>
-            <div class="card-body p-0">
-                <form method="POST" action="{{ route('agent.happy_call_status') }}">
-                    @csrf
-                    <table class="table mb-0" style="background-color: #e6f7ff;">
-                        <tr>
-                            <td class="fw-semibold">Case Resolved Date</td>
-                            <td>
-                                <input type="date" name="resolved_date" class="form-control" required>
-                            </td>
-                            <td class="fw-semibold">Happy Call Date</td>
-                            <td>
-                                <input type="date" name="happy_call_date" class="form-control" required>
-                            </td>
-                            <td class="fw-semibold">Customer Satisfied</td>
-                            <td>
-                                <select name="customer_satisfied" class="form-select" required>
-                                    <option value="Yes">Yes</option>
-                                    <option value="No">No</option>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="fw-semibold">Reasons of Delay <br>(Expert Opinion)</td>
-                            <td colspan="5">
-                                <textarea name="delay_reason" class="form-control" rows="2"></textarea>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="fw-semibold">Voice of Customer</td>
-                            <td colspan="5">
-                                <textarea name="voice_of_customer" class="form-control" rows="2"></textarea>
-                            </td>
-                        </tr>
-                    </table>
-                    <div class="p-3 text-end">
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
     <script>
         document.getElementById('searchComplaintBtn').addEventListener('click', function () {
             let complaintNo = document.getElementById('complaint_number').value;
@@ -439,7 +437,7 @@
 </section>
 
 <footer class="text-center py-4 bg-dark text-white mt-5">
-    <p class="mb-0">&copy; {{ date('Y') }} PEL Portal. All rights reserved.</p>
+    <p class="mb-0">&copy; {{ date('Y') }} PEL. All rights reserved.</p>
 </footer>
 
 @endsection

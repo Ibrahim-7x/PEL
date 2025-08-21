@@ -22,46 +22,58 @@
 
 <style>
     body {
-        background: linear-gradient(to right, #00c6ff, #0072ff); /* Full page gradient background */
+        background: linear-gradient(to right, #00c6ff, #0072ff);
     }
 </style>
 
 <body>
-    <div class="container d-flex justify-content-center align-items-center" style="min-height: 90vh;">
+    <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
         <div class="col-md-6">
             <div class="card shadow-lg p-5 border-0" style="background-color: #ffffff; border-radius: 20px;">
                 <div class="text-center mb-4">
-                    <h2 class="fw-bold text-primary">Login</h2>
+                    <h2 class="fw-bold text-primary">PEL-ABACUS</h2>
                     <p class="text-muted">Access your account below</p>
                 </div>
+                
                 @if (session('success'))
-                    <div id="success-alert" style="color: green; padding: 10px; border: 1px solid green; margin-bottom: 10px; position: relative;">
+                    <div id="success-alert" 
+                        style="background: #e6ffed; color: #0f5132; border-left: 5px solid #28a745; 
+                                padding: 12px 16px; margin-bottom: 15px; border-radius: 8px; 
+                                font-size: 15px; position: relative; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
                         <button onclick="document.getElementById('success-alert').style.display='none'" 
-                                style="position: absolute; right: 10px; top: 5px; border: none; background: transparent; font-weight: bold; font-size: 16px; cursor: pointer;">
+                                style="position: absolute; right: 12px; top: 8px; border: none; 
+                                    background: transparent; font-weight: bold; font-size: 18px; 
+                                    cursor: pointer; color: #0f5132;">
                             &times;
                         </button>
-                        {{ session('success') }}
+                        ✅ {{ session('success') }}
                     </div>
                 @endif
 
                 @if ($errors->any())
-                    <div id="error-alert" style="color: red; padding: 10px; border: 1px solid red; margin-bottom: 10px; position: relative;">
+                    <div id="error-alert" 
+                        style="background: #fde8e8; color: #842029; border-left: 5px solid #dc3545; 
+                                padding: 12px 16px; margin-bottom: 15px; border-radius: 8px; 
+                                font-size: 15px; position: relative; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
                         <button onclick="document.getElementById('error-alert').style.display='none'" 
-                                style="position: absolute; right: 10px; top: 5px; border: none; background: transparent; font-weight: bold; font-size: 16px; cursor: pointer;">
+                                style="position: absolute; right: 12px; top: 8px; border: none; 
+                                    background: transparent; font-weight: bold; font-size: 18px; 
+                                    cursor: pointer; color: #842029;">
                             &times;
                         </button>
-                        <ul style="margin: 0;">
+                        <ul style="margin: 0; padding-left: 18px;">
                             @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
+                                <li>❌ {{ $error }}</li>
                             @endforeach
                         </ul>
                     </div>
                 @endif
+
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
                     <div class="mb-3">
-                        <label for="email" class="form-label fw-semibold">Email</label>
-                        <input type="email" class="form-control" name="email" id="email" required placeholder="Enter your email">
+                        <label for="username" class="form-label fw-semibold">Username</label>
+                        <input type="text" class="form-control" name="username" id="username" required placeholder="Enter your username">
                     </div>
 
                     <div class="mb-4">
@@ -72,14 +84,13 @@
                     <div class="d-grid mb-3">
                         <button type="submit" class="btn btn-primary btn-lg rounded-pill">Login</button>
                     </div>
-
-                    <div class="d-grid">
+                    {{-- <div class="d-grid">
                         <a href="{{ route('register') }}" class="btn btn-outline-secondary btn-lg rounded-pill">Sign Up</a>
                     </div>
 
                     <div class="text-center mt-3">
                         <a href="{{ route('password.request') }}" class="text-decoration-none text-info">Forgot your password?</a>
-                    </div>
+                    </div> --}}
                 </form>
             </div>
         </div>
@@ -87,6 +98,6 @@
 </body>
 
 <footer class="text-center py-4 bg-dark text-white mt-5">
-    <p class="mb-0">&copy; {{ date('Y') }} PEL Portal. All rights reserved.</p>
+    <p class="mb-0">&copy; {{ date('Y') }} PEL-Abacus. All rights reserved.</p>
 </footer>
 </html>

@@ -20,19 +20,7 @@ class LoginController extends Controller
      */
     protected function redirectTo()
     {
-        $role = auth()->user()->role;
-
-        if ($role === 'Agent') 
-            {
-            return '/home-agent';
-        } 
-        elseif ($role === 'Management') 
-            {
-            return '/home-management';
-        }
-
-        // fallback
-        return '/home';
+        return '/profile';
     }
 
     public function showLoginForm()
@@ -44,21 +32,21 @@ class LoginController extends Controller
     {
         // Validate input
         $request->validate([
-            'email' => 'required|email',
+            'username' => 'required|string|exists:users,username',
             'password' => 'required|string',
         ]);
 
-        // Check if email exists
-        $user = User::where('email', $request->email)->first();
+        // Check if username exists
+        $user = User::where('username', $request->username)->first();
 
         if (!$user) {
             throw ValidationException::withMessages([
-                'email' => ['No account found with this email.'],
+                'username' => ['No account found with this username.'],
             ]);
         }
 
         // Attempt login
-        if (!Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
+        if (!Auth::attempt(['username' => $request->username, 'password' => $request->password])) {
             throw ValidationException::withMessages([
                 'password' => ['The password you entered is incorrect.'],
             ]);

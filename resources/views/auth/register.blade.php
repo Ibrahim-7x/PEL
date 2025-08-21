@@ -66,8 +66,8 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="email" class="form-label fw-semibold">Email</label>
-                        <input type="email" class="form-control" name="email" id="email" required placeholder="Enter your email">
+                        <label for="username" class="form-label fw-semibold">Username</label>
+                        <input type="text" class="form-control" name="username" id="username" required placeholder="Enter your email">
                     </div>
 
                     <div class="mb-3">

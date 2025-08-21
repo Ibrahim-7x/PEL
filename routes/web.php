@@ -26,8 +26,7 @@ Route::middleware(['auth', 'role:Agent'])->group(function () {
     Route::post('/home-agent/ticket/{ticket_no}/feedback', [AgentController::class, 'storeFeedback'])->name('agent.feedback.store');
     Route::post('/home-agent/search-ticket', [App\Http\Controllers\AgentController::class, 'searchTicket'])->name('ticket.search');
     Route::get('/home-agent/ticket/{ticket_no}/feedbacks', [AgentController::class, 'getFeedbacks'])->name('agent.feedback.list');
-    Route::post('/home-agent/happy-call-status', [App\Http\Controllers\AgentController::class, 'saveHappyCallStatus'])->name('agent.happy_call_status');
-});
+    Route::post('/agent/{ticket_no}/happy-call', [AgentController::class, 'saveHappyCallStatus'])->name('agent.happy-call.save');});
 
 // Management routes
 Route::middleware(['auth', 'role:Management'])->group(function () {

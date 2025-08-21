@@ -206,26 +206,38 @@ class AgentController extends Controller
         return response()->json($feedbacks);
     }
 
-    public function saveHappyCallStatus(Request $request)
+    public function saveHappyCallStatus(Request $request, string $ticket_no)
     {
+        $ticket = InitialCustomerInformation::where('ticket_no', $ticket_no)->first();
+
+        if (!$ticket) {
+            return back()->withErrors(['error' => 'Ticket not found.']);
+        }
+
+        // Prevent duplicate Happy Call for same ticket
+        if (HappyCallStatus::where('ici_id', $ticket->id)->exists()) {
+            return back()->withErrors(['error' => 'Happy Call already exists for this ticket.']);
+        }
+
         $request->validate([
-            'resolved_date' => 'required|date',
-            'happy_call_date' => 'required|date',
-            'customer_satisfied' => 'required|string',
-            'delay_reason' => 'nullable|string',
-            'voice_of_customer' => 'nullable|string',
+            'resolved_date'      => 'required|date',
+            'happy_call_date'    => 'required|date',
+            'customer_satisfied' => 'required|in:Yes,No',
+            'delay_reason'       => 'nullable|string|max:1000',
+            'voice_of_customer'  => 'nullable|string|max:2000',
         ]);
 
-        \App\Models\HappyCallStatus::create([
-            'ici_id' => $request->ici_id,
-            'resolved_date' => $request->resolved_date,
-            'happy_call_date' => $request->happy_call_date,
+        HappyCallStatus::create([
+            'ici_id'             => $ticket->id, // foreign key
+            'resolved_date'      => $request->resolved_date,
+            'happy_call_date'    => $request->happy_call_date,
             'customer_satisfied' => $request->customer_satisfied,
-            'delay_reason' => $request->delay_reason,
-            'voice_of_customer' => $request->voice_of_customer,
+            'delay_reason'       => $request->delay_reason,
+            'voice_of_customer'  => $request->voice_of_customer,
         ]);
 
-        return redirect()->back()->with('success', 'Happy Call Status saved successfully!');
+        return back()->with('success', 'Happy Call status saved successfully!');
     }
+
 
 }
