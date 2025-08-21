@@ -42,6 +42,30 @@
                     📄 <span class="sidebar-text">RU Case Form</span>
                 </a>
             </li>
+            @if(auth()->check() && strtolower(auth()->user()->role) === 'management')
+                <li class="nav-item mt-3 mb-1 sidebar-text">
+                    <span class="text-uppercase text-muted small">Reports</span>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="{{ route('export.initial_customer') }}" class="nav-link {{ request()->routeIs('export.initial_customer') ? 'active fw-bold' : '' }}">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>
+                        <span class="sidebar-text">Initial Customers</span>
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="{{ route('export.happy_call') }}" class="nav-link {{ request()->routeIs('export.happy_call') ? 'active fw-bold' : '' }}">
+                        <i class="bi bi-emoji-smile me-1"></i>
+                        <span class="sidebar-text">Happy Calls</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('export.feedback') }}" class="nav-link {{ request()->routeIs('export.feedback') ? 'active fw-bold' : '' }}">
+                        <i class="bi bi-chat-dots me-1"></i>
+                        <span class="sidebar-text">Feedback</span>
+                    </a>
+                </li>
+            @endif
+
         </ul>
     </div>
 

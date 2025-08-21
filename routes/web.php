@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\AgentController;
 use App\Http\Controllers\ManagementController;
+use App\Http\Controllers\ExportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,4 +40,23 @@ Route::middleware(['auth', 'role:Management'])->group(function () {
 
 // Logout
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
+
+
+// Export routes
+
+
+
+Route::middleware(['auth', 'role:Management'])->group(function () {
+    Route::get('/export/initial-customer', [ExportController::class, 'initialCustomerPage'])->name('export.initial_customer');
+    Route::post('/export/initial-customer/download', [ExportController::class, 'exportInitialCustomer'])->name('export.initial_customer.download');
+
+    Route::get('/export/happy-call', [ExportController::class, 'happyCallPage'])->name('export.happy_call');
+    Route::post('/export/happy-call/download', [ExportController::class, 'exportHappyCall'])->name('export.happy_call.download');
+
+    Route::get('/export/feedback', [ExportController::class, 'feedbackPage'])->name('export.feedback');
+    Route::post('/export/feedback/download', [ExportController::class, 'exportFeedback'])->name('export.feedback.download');
+});
+
+
+
 
