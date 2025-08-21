@@ -2,10 +2,18 @@
 
 @section('title', 'Agent')
 
+@section('meta')
+    @if(isset($ici) && $ici && isset($feedbacks) && $feedbacks->count() > 0)
+        <meta name="last-feedback-id" content="{{ $feedbacks->last()->id }}">
+    @else
+        <meta name="last-feedback-id" content="0">
+    @endif
+@endsection
+
 @section('content')
 
 <!-- 📝 RU CASE Form Section -->
-<section class="py-5 bg-light">
+<section class="py-5 bg-light agent-page">
     <div class="container">
         {{-- Success Message --}}
         @if(session('success'))
@@ -24,63 +32,76 @@
                 </ul>
             </div>
         @endif
-        <h2 class="fw-bold mb-4 text-center">RU CASE</h2>
+        <h2 class="fw-bold mb-2 text-center d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-clipboard2-check text-primary"></i>
+            RU CASE
+        </h2>
+        <p class="text-muted text-center mb-4">Record, track and collaborate on customer escalations</p>
         
         <!-- Customer Detail From COMS -->
-        <h5 class="mb-3 text-warning">Customer Detail From COMS</h5>
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Complaint #</label>
-                <div class="input-group">
-                    <input type="text" id="complaint_number" name="complaint_number" class="form-control">
-                    <button type="button" id="searchComplaintBtn" class="btn btn-primary">
-                        <i class="bi bi-search"></i> <!-- Bootstrap Icon -->
-                    </button>
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white d-flex align-items-center">
+                <i class="bi bi-database-gear text-warning me-2"></i>
+                <span class="fw-semibold text-warning">Customer Detail From COMS</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Complaint #</label>
+                        <div class="input-group">
+                            <input type="text" id="complaint_number" name="complaint_number" class="form-control" placeholder="Enter COMS Complaint #">
+                            <button type="button" id="searchComplaintBtn" class="btn btn-primary">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Fetch customer/job details from COMS</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Job #</label>
+                        <input type="text" name="job_number" id="job_number" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">COMS Complaint Date</label>
+                        <input type="date" name="coms_complaint_date" id="coms_complaint_date" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Job Type</label>
+                        <input type="text" name="job_type" id="job_type" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Customer Name</label>
+                        <input type="text" name="customer_name" id="customer_name" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Contact No</label>
+                        <input type="text" name="contact_no" id="contact_no" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Technician Name</label>
+                        <input type="text" name="technician_name" id="technician_name" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Date of Purchase</label>
+                        <input type="date" name="purchase_date" id="purchase_date" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Product</label>
+                        <input type="text" name="product" id="product" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Job Status</label>
+                        <input type="text" name="job_status" id="job_status" class="form-control" readonly>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Problem</label>
+                        <textarea id="problem" name="problem" rows="2" class="form-control" readonly></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Work Done</label>
+                        <textarea id="workdone" name="workdone" rows="2" class="form-control" readonly></textarea>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Job #</label>
-                <input type="text" name="job_number" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">COMS Complaint Date</label>
-                <input type="date" name="coms_complaint_date" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Job Type</label>
-                <input type="text" name="job_type" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Customer Name</label>
-                <input type="text" name="customer_name" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Contact No</label>
-                <input type="text" name="contact_no" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Technician Name</label>
-                <input type="text" name="technician_name" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Date of Purchase</label>
-                <input type="date" name="purchase_date" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Product</label>
-                <input type="text" name="product" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Job Status</label>
-                <input type="text" name="job_status" class="form-control" readonly>
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold">Problem</label>
-                <input name="problem" rows="2" class="form-control" readonly>
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold">Work Done</label>
-                <input name="workdone" rows="2" class="form-control" readonly>
             </div>
         </div>
         
@@ -88,7 +109,12 @@
         <!-- Initial Customer Information -->
         <form action="{{ route('agent.store') }}" method="POST" class="p-4 shadow rounded bg-white">
             @csrf
-            <h5 class="mb-3 text-primary">Initial Customer Information</h5>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0 text-primary d-flex align-items-center gap-2">
+                    <i class="bi bi-person-vcard"></i> Initial Customer Information
+                </h5>
+                <span class="badge rounded-pill bg-light text-secondary">Step 1</span>
+            </div>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Ticket No</label>
@@ -189,15 +215,26 @@
                         </div>
                     </div>
                 @else
+                    {{-- Config for chat.js (used when chatArea is updated via AJAX) --}}
+                    <div id="chatConfig"
+                         data-feedback-list-url="{{ route('agent.feedback.list', $ici->ticket_no) }}"
+                         data-current-user="{{ auth()->user()->name }}"
+                         data-agent-index-url="{{ route('agent.index') }}"
+                         data-last-feedback-id="{{ $feedbacks->last()->id ?? 0 }}"></div>
+
                     {{-- Chat header --}}
-                    <div class="d-flex align-items-center mb-4">
-                        <a href="javascript:void(0)" class="btn btn-light me-2" onclick="goBackToSearch()">←</a>
-                        <h4 class="mb-0">Ticket #{{ $ici->ticket_no }}</h4>
+                    <div class="d-flex align-items-center mb-3">
+                        <a href="javascript:void(0)" class="btn btn-outline-secondary btn-sm me-2" onclick="goBackToSearch()">
+                            <i class="bi bi-arrow-left"></i>
+                        </a>
+                        <h4 class="mb-0">
+                            Ticket <span class="badge rounded-pill text-bg-primary">{{ $ici->ticket_no }}</span>
+                        </h4>
                     </div>
 
                     {{-- Chat box --}}
                     <div class="card border-0 shadow-sm">
-                        <div class="card-body" id="chatScrollArea" style="height: 420px; overflow-y: auto; background-color: #f8f9fa;">
+                        <div class="card-body chat-scroll" id="chatScrollArea" style="height: 420px; overflow-y: auto;">
                             @forelse($feedbacks as $feedback)
                                 @php
                                     $isMe = isset(auth()->user()->name) && $feedback->name === auth()->user()->name;
@@ -227,63 +264,34 @@
 
                         {{-- Chat input --}}
                         <div class="card-footer bg-white">
-                            <form id="chatForm" action="{{ route('agent.feedback.store', $ici->ticket_no) }}" method="POST" class="d-flex gap-2">
+                            <form id="chatForm" action="{{ route('agent.feedback.store', $ici->ticket_no) }}" method="POST" class="chat-input-form">
                                 @csrf
-                                <input
-                                    type="text"
-                                    name="message"
-                                    id="chatMessage"
-                                    class="form-control @error('message') is-invalid @enderror"
-                                    placeholder="Type your message…"
-                                    autocomplete="off"
-                                    required
-                                >
-                                <button type="submit" class="btn btn-primary">Send</button>
+                                <div class="input-group">
+                                    <input
+                                        type="text"
+                                        name="message"
+                                        id="chatMessage"
+                                        class="form-control @error('message') is-invalid @enderror"
+                                        placeholder="Type your message…"
+                                        autocomplete="off"
+                                        required
+                                    >
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-send-fill me-1"></i> Send
+                                    </button>
+                                </div>
                                 @error('message')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </form>
                         </div>
                     </div>
-                    <script>
-                        function fetchNewFeedbacks() 
-                        {
-                            fetch("{{ route('agent.feedback.list', $ici->ticket_no) }}")
-                            .then(response => response.json())
-                            .then(data => {
-                                const chatBox = document.getElementById('chatScrollArea');
-
-                                data.forEach(fb => {
-                                    if (fb.id > lastFeedbackId) {
-                                        const isMe = fb.name === "{{ auth()->user()->name }}";
-
-                                        const bubble = document.createElement('div');
-                                        bubble.classList.add('d-flex', isMe ? 'justify-content-end' : 'justify-content-start', 'mb-3');
-
-                                        bubble.innerHTML = `
-                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: ${isMe ? '#d1e7dd' : '#e2e3e5'};">
-                                                <div class="fw-semibold mb-1">
-                                                    ${isMe ? 'You' : fb.name} <span class="text-muted">(${fb.role})</span>
-                                                </div>
-                                                <div>${fb.message}</div>
-                                                <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
-                                            </div>
-                                        `;
-                                        chatBox.appendChild(bubble);
-                                        chatBox.scrollTop = chatBox.scrollHeight;
-                                        lastFeedbackId = fb.id;
-                                    }
-                                });
-                            })
-                            .catch(err => console.error(err));
-                        }
-                        setInterval(fetchNewFeedbacks, 5000);
-                    </script>
                     @if(!$ici || !$ici->happyCallStatus) 
                         {{-- Show form only if no happy call exists --}}
                         <div id="happyCallForm" class="card mt-4">
-                            <div class="card-header text-center fw-bold" style="background-color: #cceeff;">
-                                Happy Call Status
+                            <div class="card-header bg-white d-flex align-items-center gap-2">
+                                <i class="bi bi-emoji-smile text-primary"></i>
+                                <span class="fw-semibold text-primary">Happy Call Status</span>
                             </div>
                             <div class="card-body p-0">
                                 <form method="POST" action="{{ route('agent.happy-call.save', $ici->ticket_no) }}">
@@ -325,119 +333,86 @@
                     @endif
                 </div>
             </div>
-    <script>
-        document.getElementById('searchComplaintBtn').addEventListener('click', function () {
-            let complaintNo = document.getElementById('complaint_number').value;
-            if (complaintNo.trim() !== "") {
-                fetch(`/api/get-complaint/${complaintNo}`) // <-- Your Laravel API endpoint
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data) {
-                            document.getElementById('job_number').value = data.job_number || '';
-                            document.getElementById('coms_complaint_date').value = data.coms_complaint_date || '';
-                            document.getElementById('job_type').value = data.job_type || '';
-                            document.getElementById('customer_name').value = data.customer_name || '';
-                            document.getElementById('contact_no').value = data.contact_no || '';
-                            document.getElementById('technician_name').value = data.technician_name || '';
-                            document.getElementById('purchase_date').value = data.purchase_date || '';
-                            document.getElementById('product').value = data.product || '';
-                            document.getElementById('job_status').value = data.job_status || '';
-                            document.getElementById('problem').value = data.problem || '';
-                            document.getElementById('workdone').value = data.workdone || '';
-                        } else {
-                            alert("No record found for this Complaint #");
-                        }
-                    })
-                    .catch(error => console.error('Error fetching data:', error));
-            } else {
-                alert("Please enter a Complaint #");
-            }
-        });
-
-        function goBackToSearch() {
-            fetch("{{ route('agent.index') }}")
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newContent = doc.querySelector('#chatArea');
-                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
-                });
-        }
-
-        // Intercept ticket search form submit
-        document.addEventListener('submit', function(e) {
-            if (e.target && e.target.id === 'ticketSearchForm') {
-                e.preventDefault(); // stop full reload
-
-                const form = e.target;
-                const formData = new FormData(form);
-                const url = form.action + '?' + new URLSearchParams(formData).toString();
-
-                fetch(url)
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newContent = doc.querySelector('#chatArea');
-                    document.getElementById('chatArea').innerHTML = newContent.innerHTML;
-                });
-            }
-        });
-
-        // Auto-scroll on load
-        window.addEventListener('load', function () {
-            var box = document.getElementById('chatScrollArea');
-            if (box) { box.scrollTop = box.scrollHeight; }
-        });
-
-        document.addEventListener('submit', function(e) {
-            if (e.target && e.target.id === 'chatForm') {
-                e.preventDefault();
-
-                const form = e.target;
-                const formData = new FormData(form);
-
-                fetch(form.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        // Append new message bubble (right side "You")
-                        const chatBox = document.getElementById('chatScrollArea');
-                        const bubble = document.createElement('div');
-                        bubble.classList.add('d-flex', 'justify-content-end', 'mb-3');
-                        bubble.innerHTML = `
-                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
-                                <div class="fw-semibold mb-1">You <span class="text-muted">(${data.role})</span></div>
-                                <div>${data.message}</div>
-                                <div class="mt-1"><small class="text-muted">${data.time}</small></div>
-                            </div>
-                        `;
-                        chatBox.appendChild(bubble);
-                        chatBox.scrollTop = chatBox.scrollHeight; // auto-scroll
-
-                        // Reset input
-                        document.getElementById('chatMessage').value = '';
-                    } else if (data.error) {
-                        alert(data.error);
-                    }
-                })
-                .catch(err => console.error(err));
-            }
-        });
-        let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
-    </script>
 </section>
+
+<style>
+/* Agent page polish */
+.agent-page .card {
+    border-radius: 14px;
+}
+
+.agent-page .card-header {
+    border-bottom: 1px solid rgba(0,0,0,.05);
+}
+
+.agent-page label.form-label {
+    color: #495057;
+}
+
+.agent-page .form-control,
+.agent-page .form-select {
+    border-radius: 10px;
+}
+
+/* Chat area */
+.chat-scroll {
+    background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+}
+.chat-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+    background: #d0d5dd;
+    border-radius: 8px;
+}
+
+/* Chat bubbles already use inline bg colors; add subtle shadow */
+.chat-scroll .p-2.rounded-3 {
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+/* Chat input */
+.chat-input-form .input-group > .form-control {
+    padding: 0.8rem 1rem;
+}
+.chat-input-form .btn {
+    padding: 0.55rem 1rem;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+/* Buttons */
+.agent-page .btn-primary {
+    box-shadow: 0 1px 2px rgba(13,110,253,.2);
+}
+
+/* Tables (Happy Call) */
+#happyCallForm table.table tr td {
+    vertical-align: middle;
+}
+
+/* Section helpers */
+.agent-page .text-warning {
+    color: #f59f00 !important;
+}
+</style>
 
 <footer class="text-center py-4 bg-dark text-white mt-5">
     <p class="mb-0">&copy; {{ date('Y') }} PEL. All rights reserved.</p>
 </footer>
 
+@endsection
+
+@section('scripts')
+    <script>
+        // Always provide the base Agent index URL so chat.js can work on the search view
+        window.agentIndexUrl = "{{ route('agent.index') }}";
+        @if(isset($ici) && $ici)
+            // Provide chat config when a ticket is open
+            window.feedbackListUrl = "{{ route('agent.feedback.list', $ici->ticket_no) }}";
+            window.currentUser = "{{ auth()->user()->name }}";
+        @endif
+    </script>
+    <script src="{{ asset('js/script.js') }}"></script>
+    <script src="{{ asset('js/chat.js') }}"></script>
 @endsection

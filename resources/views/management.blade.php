@@ -5,14 +5,23 @@
 @section('content')
 
 <!-- 📝 RU CASE Form Section -->
-<section class="py-5 bg-light">
+<section class="py-5 bg-light agent-page">
     <div class="container">
-        <h2 class="fw-bold mb-4 text-center">RU CASE</h2>
+        <h2 class="fw-bold mb-2 text-center d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-clipboard2-check text-primary"></i>
+            RU CASE
+        </h2>
+        <p class="text-muted text-center mb-4">Record, track and collaborate on customer escalations</p>
 
         <form id="ticketSearchForm" class="p-4 shadow rounded bg-white">
             @csrf
             <!-- Initial Customer Information -->
-            <h5 class="mb-3 text-primary">Initial Customer Information</h5>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0 text-primary d-flex align-items-center gap-2">
+                    <i class="bi bi-person-vcard"></i> Initial Customer Information
+                </h5>
+                <span class="badge rounded-pill bg-light text-secondary">Step 1</span>
+            </div>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Ticket No</label>
@@ -67,7 +76,7 @@
             document.getElementById("searchBtn").addEventListener("click", function () {
                 let ticketNo = document.getElementById("ticket_no").value;
 
-                fetch("{{ route('ticket.search') }}", {
+                fetch("{{ route('management.ticket.search') }}", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -95,55 +104,63 @@
         </script>
 
         <!-- Customer Detail From COMS -->
-        <div class="row g-3">
-            <h5 class="mb-3 text-warning">Customer Detail From COMS</h5>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Complaint #</label>
-                <input type="text" name="complaint_number" class="form-control">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white d-flex align-items-center">
+                <i class="bi bi-database-gear text-warning me-2"></i>
+                <span class="fw-semibold text-warning">Customer Detail From COMS</span>
             </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Job #</label>
-                <input type="text" name="job_number" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">COMS Complaint Date</label>
-                <input type="date" name="coms_complaint_date" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Job Type</label>
-                <input type="text" name="job_type" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Customer Name</label>
-                <input type="text" name="customer_name" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Contact No</label>
-                <input type="text" name="contact_no" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Technician Name</label>
-                <input type="text" name="technician_name" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Date of Purchase</label>
-                <input type="date" name="purchase_date" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Product</label>
-                <input type="text" name="product" class="form-control" readonly>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Job Status</label>
-                <input type="text" name="job_status" class="form-control" readonly>
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold">Problem</label>
-                <input name="problem" rows="2" class="form-control" readonly>
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold">Work Done</label>
-                <input name="workdone" rows="2" class="form-control" readonly>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Complaint #</label>
+                        <input type="text" name="complaint_number" class="form-control" placeholder="Enter COMS Complaint #">
+                        <small class="text-muted">Fetch customer/job details from COMS</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Job #</label>
+                        <input type="text" name="job_number" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">COMS Complaint Date</label>
+                        <input type="date" name="coms_complaint_date" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Job Type</label>
+                        <input type="text" name="job_type" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Customer Name</label>
+                        <input type="text" name="customer_name" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Contact No</label>
+                        <input type="text" name="contact_no" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Technician Name</label>
+                        <input type="text" name="technician_name" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Date of Purchase</label>
+                        <input type="date" name="purchase_date" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Product</label>
+                        <input type="text" name="product" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Job Status</label>
+                        <input type="text" name="job_status" class="form-control" readonly>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Problem</label>
+                        <textarea name="problem" rows="2" class="form-control" readonly></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Work Done</label>
+                        <textarea name="workdone" rows="2" class="form-control" readonly></textarea>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -168,14 +185,18 @@
                     </div>
                 @else
                     {{-- Chat header --}}
-                    <div class="d-flex align-items-center mb-4">
-                        <a href="javascript:void(0)" class="btn btn-light me-2" onclick="goBackToSearch()">← Back</a>
-                        <h4 class="mb-0">Ticket #{{ $ici->ticket_no }}</h4>
+                    <div class="d-flex align-items-center mb-3">
+                        <a href="javascript:void(0)" class="btn btn-outline-secondary btn-sm me-2" onclick="goBackToSearch()">
+                            <i class="bi bi-arrow-left"></i>
+                        </a>
+                        <h4 class="mb-0">
+                            Ticket <span class="badge rounded-pill text-bg-primary">{{ $ici->ticket_no }}</span>
+                        </h4>
                     </div>
 
                     {{-- Chat box --}}
                     <div class="card border-0 shadow-sm">
-                        <div class="card-body" id="chatScrollArea" style="height: 420px; overflow-y: auto; background-color: #f8f9fa;">
+                        <div class="card-body chat-scroll" id="chatScrollArea" style="height: 420px; overflow-y: auto;">
                             @forelse($feedbacks as $feedback)
                                 @php
                                     $isMe = isset(auth()->user()->name) && $feedback->name === auth()->user()->name;
@@ -205,18 +226,22 @@
 
                         {{-- Chat input --}}
                         <div class="card-footer bg-white">
-                            <form id="chatForm" action="{{ route('management.feedback.store', $ici->ticket_no) }}" method="POST" class="d-flex gap-2">
+                            <form id="chatForm" action="{{ route('management.feedback.store', $ici->ticket_no) }}" method="POST" class="chat-input-form">
                                 @csrf
-                                <input
-                                    type="text"
-                                    name="message"
-                                    id="chatMessage"
-                                    class="form-control @error('message') is-invalid @enderror"
-                                    placeholder="Type your message…"
-                                    autocomplete="off"
-                                    required
-                                >
-                                <button type="submit" class="btn btn-primary">Send</button>
+                                <div class="input-group">
+                                    <input
+                                        type="text"
+                                        name="message"
+                                        id="chatMessage"
+                                        class="form-control @error('message') is-invalid @enderror"
+                                        placeholder="Type your message…"
+                                        autocomplete="off"
+                                        required
+                                    >
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-send-fill me-1"></i> Send
+                                    </button>
+                                </div>
                                 @error('message')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
@@ -224,7 +249,8 @@
                         </div>
                     </div>
                     <script>
-                        function fetchNewFeedbacks() 
+                        let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
+                        function fetchNewFeedbacks()
                         {
                             fetch("{{ route('management.feedback.list', $ici->ticket_no) }}")
                             .then(response => response.json())
@@ -341,9 +367,71 @@
                 .catch(err => console.error(err));
             }
         });
-        let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
+        {{-- lastFeedbackId initialization moved into the chat section to avoid undefined variable when $feedbacks is not set --}}
     </script>
 </section>
+
+<style>
+/* Agent/Management shared page polish */
+.agent-page .card {
+    border-radius: 14px;
+}
+
+.agent-page .card-header {
+    border-bottom: 1px solid rgba(0,0,0,.05);
+}
+
+.agent-page label.form-label {
+    color: #495057;
+}
+
+.agent-page .form-control,
+.agent-page .form-select {
+    border-radius: 10px;
+}
+
+/* Chat area */
+.chat-scroll {
+    background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+}
+.chat-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+    background: #d0d5dd;
+    border-radius: 8px;
+}
+
+/* Chat bubbles subtle shadow */
+.chat-scroll .p-2.rounded-3 {
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+/* Chat input */
+.chat-input-form .input-group > .form-control {
+    padding: 0.8rem 1rem;
+}
+.chat-input-form .btn {
+    padding: 0.55rem 1rem;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+/* Buttons */
+.agent-page .btn-primary {
+    box-shadow: 0 1px 2px rgba(13,110,253,.2);
+}
+
+/* Table alignment */
+#happyCallForm table.table tr td {
+    vertical-align: middle;
+}
+
+/* Accent */
+.agent-page .text-warning {
+    color: #f59f00 !important;
+}
+</style>
 
 <!-- ⚫ Footer -->
 <footer class="text-center py-4 bg-dark text-white mt-5">

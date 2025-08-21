@@ -6,6 +6,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+    
+    <!-- Page-specific meta tags -->
+    @yield('meta')
 </head>
 
 <body>
@@ -35,7 +38,7 @@
             </li>
             <li class="nav-item mb-2">
                 <a class="nav-link {{ request()->is('home-agent') || request()->is('home-management') ? 'active fw-bold' : '' }}" 
-                   href="{{ auth()->user()->role === 'Agent' ? url('/home-agent') : url('/home-management') }}">
+                   href="{{ auth()->check() ? (auth()->user()->role === 'Agent' ? url('/home-agent') : url('/home-management')) : route('login') }}">
                     📄 <span class="sidebar-text">RU Case Form</span>
                 </a>
             </li>
@@ -51,19 +54,23 @@
 
             <!-- Profile Dropdown -->
             <div class="dropdown">
-                <a class="d-flex align-items-center text-decoration-none dropdown-toggle" href="#" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <img src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}" alt="Avatar" class="rounded-circle me-2" width="32" height="32">
-                    <strong>{{ Auth::user()->name }}</strong>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                    <li><a class="dropdown-item" href="{{ route('profile') }}">Go to Profile</a></li>
-                    <li>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="dropdown-item">Logout</button>
-                        </form>
-                    </li>
-                </ul>
+                @auth
+                    <a class="d-flex align-items-center text-decoration-none dropdown-toggle" href="#" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}" alt="Avatar" class="rounded-circle me-2" width="32" height="32">
+                        <strong>{{ auth()->user()->name }}</strong>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                        <li><a class="dropdown-item" href="{{ route('profile') }}">Go to Profile</a></li>
+                        <li>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="dropdown-item">Logout</button>
+                            </form>
+                        </li>
+                    </ul>
+                @else
+                    <a class="btn btn-primary" href="{{ route('login') }}">Login</a>
+                @endauth
             </div>
         </nav>
 
@@ -111,5 +118,9 @@
         margin-left: 250px;
     }
 </style>
+
+<!-- Page-specific JavaScript -->
+@yield('scripts')
+
 </body>
 </html>

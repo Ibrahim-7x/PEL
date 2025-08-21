@@ -31,6 +31,7 @@ class AgentController extends Controller
         $ici = null;
         $feedbacks = collect();
 
+        // Honor ticket_no on any request. Page reload behavior is controlled by front-end history.
         if ($request->filled('ticket_no')) {
             $ici = InitialCustomerInformation::where('ticket_no', $request->ticket_no)->first();
             if ($ici) {
@@ -113,7 +114,7 @@ class AgentController extends Controller
             $feedback = Feedback::create([
                 'ici_id'  => $ici->id,
                 'name'    => Auth::user()->name,
-                'role'    => Auth::user()->role ?? 'Management',
+                'role'    => Auth::user()->role ?? 'Agent',
                 'message' => $request->message,
             ]);
 
@@ -127,9 +128,9 @@ class AgentController extends Controller
                 ]);
             }
 
-            // Fallback for normal (non-AJAX) submits
+            // Fallback for normal (non-AJAX) submits: reset to Agent home (search view)
             return redirect()
-                ->route('management.ticket', $ticket_no)
+                ->route('agent.index')
                 ->with('success', 'Feedback added!');
         } catch (\Throwable $e) {
             if ($request->ajax()) {
