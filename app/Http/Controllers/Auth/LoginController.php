@@ -20,7 +20,7 @@ class LoginController extends Controller
      */
     protected function redirectTo()
     {
-        return '/profile';
+        return '/welcome';
     }
 
     public function showLoginForm()

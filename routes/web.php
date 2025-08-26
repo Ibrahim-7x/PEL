@@ -15,6 +15,10 @@ use App\Http\Controllers\ExportController;
 
 Auth::routes();
 
+Route::get('/welcome', function () {
+    return view('welcome');
+})->middleware('auth')->name('welcome');
+
 Route::get('/profile', function () {
     return view('profile');
 })->middleware('auth')->name('profile');

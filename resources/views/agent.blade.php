@@ -312,7 +312,14 @@
                                         </tr>
                                         <tr>
                                             <td class="fw-semibold">Reasons of Delay</td>
-                                            <td colspan="5"><textarea name="delay_reason" class="form-control" rows="2"></textarea></td>
+                                            <td colspan="5">
+                                                <select name="delay_reason" class="form-select" required>
+                                                    <option value="">-- Select Reason of Delay --</option>
+                                                    @foreach($delayReason as $reason)
+                                                        <option value="{{ $reason->reason }}">{{ $reason->reason }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
                                         </tr>
                                         <tr>
                                             <td class="fw-semibold">Voice of Customer</td>

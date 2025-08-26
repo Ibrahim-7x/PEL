@@ -32,7 +32,7 @@
         <!-- Sidebar Menu -->
         <ul class="nav flex-column">
             <li class="nav-item mb-2">
-                <a class="nav-link {{ request()->is('profile') ? 'active fw-bold' : '' }}" href="{{ url('/profile') }}">
+                <a class="nav-link {{ request()->is('welcome') ? 'active fw-bold' : '' }}" href="{{ url('/welcome') }}">
                     🏠 <span class="sidebar-text">Home</span>
                 </a>
             </li>

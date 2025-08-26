@@ -12,6 +12,7 @@ use App\Models\EscalationReason;
 use App\Models\InitialCustomerInformation;
 use App\Models\Feedback;
 use App\Models\HappyCallStatus;
+use App\Models\DelayReason;
 
 class AgentController extends Controller
 {
@@ -27,6 +28,7 @@ class AgentController extends Controller
         $complaintCategory = ComplaintCategory::orderBy('category_name')->get();
         $caseStatus = CaseStatus::orderBy('status')->get();
         $reasonofEscalation = EscalationReason::orderBy('reason')->get();
+        $delayReason = DelayReason::orderBy('reason')->get();
 
         $ici = null;
         $feedbacks = collect();
@@ -47,7 +49,8 @@ class AgentController extends Controller
             'caseStatus',
             'reasonofEscalation',
             'ici',
-            'feedbacks'
+            'feedbacks',
+            'delayReason'
         ));
     }
 
@@ -98,6 +101,7 @@ class AgentController extends Controller
             'complaintCategory'   => ComplaintCategory::orderBy('category_name')->get(),
             'caseStatus'          => CaseStatus::orderBy('status')->get(),
             'reasonofEscalation'  => EscalationReason::orderBy('reason')->get(),
+            'delayReason'         => DelayReason::orderBy('reason')->get(),
         ]);
     }
 
