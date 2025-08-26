@@ -76,7 +76,7 @@ function pollNewMessages() {
         .catch(error => console.error('Error polling messages:', error))
         .finally(() => {
             isPolling = false;
-            window.feedbackPollTimeoutId = setTimeout(pollNewMessages, 5000); // Poll every 5 seconds
+            window.feedbackPollTimeoutId = setTimeout(pollNewMessages, 36000); // Poll every 5 seconds
         });
 }
 

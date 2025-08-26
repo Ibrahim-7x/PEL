@@ -343,65 +343,65 @@
 </section>
 
 <style>
-/* Agent page polish */
-.agent-page .card {
-    border-radius: 14px;
-}
+    /* Agent page polish */
+    .agent-page .card {
+        border-radius: 14px;
+    }
 
-.agent-page .card-header {
-    border-bottom: 1px solid rgba(0,0,0,.05);
-}
+    .agent-page .card-header {
+        border-bottom: 1px solid rgba(0,0,0,.05);
+    }
 
-.agent-page label.form-label {
-    color: #495057;
-}
+    .agent-page label.form-label {
+        color: #495057;
+    }
 
-.agent-page .form-control,
-.agent-page .form-select {
-    border-radius: 10px;
-}
+    .agent-page .form-control,
+    .agent-page .form-select {
+        border-radius: 10px;
+    }
 
-/* Chat area */
-.chat-scroll {
-    background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
-}
-.chat-scroll::-webkit-scrollbar {
-    width: 8px;
-}
-.chat-scroll::-webkit-scrollbar-thumb {
-    background: #d0d5dd;
-    border-radius: 8px;
-}
+    /* Chat area */
+    .chat-scroll {
+        background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+    }
+    .chat-scroll::-webkit-scrollbar {
+        width: 8px;
+    }
+    .chat-scroll::-webkit-scrollbar-thumb {
+        background: #d0d5dd;
+        border-radius: 8px;
+    }
 
-/* Chat bubbles already use inline bg colors; add subtle shadow */
-.chat-scroll .p-2.rounded-3 {
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-}
+    /* Chat bubbles already use inline bg colors; add subtle shadow */
+    .chat-scroll .p-2.rounded-3 {
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+    }
 
-/* Chat input */
-.chat-input-form .input-group > .form-control {
-    padding: 0.8rem 1rem;
-}
-.chat-input-form .btn {
-    padding: 0.55rem 1rem;
-    border-top-right-radius: 10px;
-    border-bottom-right-radius: 10px;
-}
+    /* Chat input */
+    .chat-input-form .input-group > .form-control {
+        padding: 0.8rem 1rem;
+    }
+    .chat-input-form .btn {
+        padding: 0.55rem 1rem;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+    }
 
-/* Buttons */
-.agent-page .btn-primary {
-    box-shadow: 0 1px 2px rgba(13,110,253,.2);
-}
+    /* Buttons */
+    .agent-page .btn-primary {
+        box-shadow: 0 1px 2px rgba(13,110,253,.2);
+    }
 
-/* Tables (Happy Call) */
-#happyCallForm table.table tr td {
-    vertical-align: middle;
-}
+    /* Tables (Happy Call) */
+    #happyCallForm table.table tr td {
+        vertical-align: middle;
+    }
 
-/* Section helpers */
-.agent-page .text-warning {
-    color: #f59f00 !important;
-}
+    /* Section helpers */
+    .agent-page .text-warning {
+        color: #f59f00 !important;
+    }
 </style>
 
 <footer class="text-center py-4 bg-dark text-white mt-5">
