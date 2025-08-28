@@ -3,11 +3,8 @@
 @section('title', 'Agent')
 
 @section('meta')
-    @if (isset($ici) && $ici && isset($feedbacks) && $feedbacks->count() > 0)
-        <meta name="last-feedback-id" content="{{ $feedbacks->last()->id }}">
-    @else
-        <meta name="last-feedback-id" content="0">
-    @endif
+    @vite('resources/css/agent.css')
+    <meta name="last-feedback-id" content="{{ (isset($ici) && $ici && isset($feedbacks) && $feedbacks->count() > 0) ? $feedbacks->last()->id : 0 }}">
 @endsection
 
 @section('content')
@@ -40,7 +37,7 @@
 
             <!-- Customer Detail From COMS -->
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white d-flex align-items-center">
+                <div class="card-header card-header-warning d-flex align-items-center">
                     <i class="bi bi-database-gear text-warning me-2"></i>
                     <span class="fw-semibold text-warning">Customer Detail From COMS</span>
                 </div>
@@ -109,7 +106,7 @@
 
             <hr class="my-4">
             <!-- Initial Customer Information -->
-            <form action="{{ route('agent.store') }}" method="POST" class="p-4 shadow rounded bg-white">
+            <form action="{{ route('agent.store') }}" method="POST" class="form-card p-4 shadow rounded">
                 @csrf
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <h5 class="mb-0 text-primary d-flex align-items-center gap-2">
@@ -240,39 +237,25 @@
                                 @forelse($feedbacks as $feedback)
                                     @php
                                         $isMe = isset(auth()->user()->name) && $feedback->name === auth()->user()->name;
+                                        $messageClass = $isMe ? 'justify-content-end' : 'justify-content-start';
+                                        $bgColor = $isMe ? '#d1e7dd' : '#e2e3e5';
+                                        $senderName = $isMe ? 'You' : $feedback->name;
                                     @endphp
 
-                                    @if ($isMe)
-                                        <div class="d-flex justify-content-end mb-3">
-                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
-                                                <div class="fw-semibold mb-1">You <span
-                                                        class="text-muted">({{ $feedback->role }})</span></div>
-                                                <div>{{ $feedback->message }}</div>
-                                                <div class="mt-1"><small
-                                                        class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small>
-                                                </div>
-                                            </div>
+                                    <div class="d-flex {{ $messageClass }} mb-3">
+                                        <div class="p-2 rounded-3" style="max-width: 70%; background-color: {{ $bgColor }};">
+                                            <div class="fw-semibold mb-1">{{ $senderName }} <span class="text-muted">({{ $feedback->role }})</span></div>
+                                            <div>{{ $feedback->message }}</div>
+                                            <div class="mt-1"><small class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small></div>
                                         </div>
-                                    @else
-                                        <div class="d-flex justify-content-start mb-3">
-                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: #e2e3e5;">
-                                                <div class="fw-semibold mb-1">{{ $feedback->name }} <span
-                                                        class="text-muted">({{ $feedback->role }})</span></div>
-                                                <div>{{ $feedback->message }}</div>
-                                                <div class="mt-1"><small
-                                                        class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endif
+                                    </div>
                                 @empty
-                                    <p class="text-center text-muted my-5">No feedback yet. Be the first to send a message!
-                                    </p>
+                                    <p class="text-center text-muted my-5">No feedback yet. Be the first to send a message!</p>
                                 @endforelse
                             </div>
 
                             {{-- Chat input --}}
-                            <div class="card-footer bg-white">
+                            <div class="card-footer card-footer-grey">
                                 <form id="chatForm" action="{{ route('agent.feedback.store', $ici->ticket_no) }}"
                                     method="POST" class="chat-input-form">
                                     @csrf
@@ -293,21 +276,19 @@
                         @if (!$ici || !$ici->happyCallStatus)
                             {{-- Show form only if no happy call exists --}}
                             <div id="happyCallForm" class="card mt-4">
-                                <div class="card-header bg-white d-flex align-items-center gap-2">
+                                <div class="card-header card-header-primary d-flex align-items-center gap-2">
                                     <i class="bi bi-emoji-smile text-primary"></i>
                                     <span class="fw-semibold text-primary">Happy Call Status</span>
                                 </div>
                                 <div class="card-body p-0">
                                     <form method="POST" action="{{ route('agent.happy-call.save', $ici->ticket_no) }}">
                                         @csrf
-                                        <table class="table mb-0" style="background-color: #e6f7ff;">
+                                        <table class="table table-grey mb-0">
                                             <tr>
                                                 <td class="fw-semibold">Case Resolved Date</td>
-                                                <td><input type="date" name="resolved_date" class="form-control"
-                                                        required></td>
+                                                <td><input type="date" name="resolved_date" class="form-control" required></td>
                                                 <td class="fw-semibold">Happy Call Date</td>
-                                                <td><input type="date" name="happy_call_date" class="form-control"
-                                                        required></td>
+                                                <td><input type="date" name="happy_call_date" class="form-control" required></td>
                                                 <td class="fw-semibold">Customer Satisfied</td>
                                                 <td>
                                                     <select name="customer_satisfied" class="form-select" required>
@@ -322,8 +303,7 @@
                                                     <select name="delay_reason" class="form-select" required>
                                                         <option value="">-- Select Reason of Delay --</option>
                                                         @foreach ($delayReason as $reason)
-                                                            <option value="{{ $reason->reason }}">{{ $reason->reason }}
-                                                            </option>
+                                                            <option value="{{ $reason->reason }}">{{ $reason->reason }}</option>
                                                         @endforeach
                                                     </select>
                                                 </td>
@@ -342,9 +322,7 @@
                                 </div>
                             </div>
                         @else
-                            <div class="alert alert-success mt-3">
-                                ✅ Happy Call already submitted for this ticket.
-                            </div>
+                            <div class="alert alert-success mt-3">✅ Happy Call already submitted for this ticket.</div>
                         @endif
                     @endif
                 </div>
@@ -352,70 +330,6 @@
         </div>
     </section>
 
-    <style>
-        /* Agent page polish */
-        .agent-page .card {
-            border-radius: 14px;
-        }
-
-        .agent-page .card-header {
-            border-bottom: 1px solid rgba(0, 0, 0, .05);
-        }
-
-        .agent-page label.form-label {
-            color: #495057;
-        }
-
-        .agent-page .form-control,
-        .agent-page .form-select {
-            border-radius: 10px;
-        }
-
-        /* Chat area */
-        .chat-scroll {
-            background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
-        }
-
-        .chat-scroll::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .chat-scroll::-webkit-scrollbar-thumb {
-            background: #d0d5dd;
-            border-radius: 8px;
-        }
-
-        /* Chat bubbles already use inline bg colors; add subtle shadow */
-        .chat-scroll .p-2.rounded-3 {
-            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-        }
-
-        /* Chat input */
-        .chat-input-form .input-group>.form-control {
-            padding: 0.8rem 1rem;
-        }
-
-        .chat-input-form .btn {
-            padding: 0.55rem 1rem;
-            border-top-right-radius: 10px;
-            border-bottom-right-radius: 10px;
-        }
-
-        /* Buttons */
-        .agent-page .btn-primary {
-            box-shadow: 0 1px 2px rgba(13, 110, 253, .2);
-        }
-
-        /* Tables (Happy Call) */
-        #happyCallForm table.table tr td {
-            vertical-align: middle;
-        }
-
-        /* Section helpers */
-        .agent-page .text-warning {
-            color: #f59f00 !important;
-        }
-    </style>
 
     <footer class="text-center py-4 bg-dark text-white mt-5">
         <p class="mb-0">&copy; {{ date('Y') }} PEL. All rights reserved.</p>
@@ -425,10 +339,9 @@
 
 @section('scripts')
     <script>
-        // Always provide the base Agent index URL so chat.js can work on the search view
+        // Initialize window variables for chat functionality
         window.agentIndexUrl = "{{ route('agent.index') }}";
         @if (isset($ici) && $ici)
-            // Provide chat config when a ticket is open
             window.feedbackListUrl = "{{ route('agent.feedback.list', $ici->ticket_no) }}";
             window.currentUser = "{{ auth()->user()->name }}";
         @endif

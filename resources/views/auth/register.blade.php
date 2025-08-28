@@ -22,7 +22,87 @@
 
 <style>
     body {
-        background: linear-gradient(to right, #00c6ff, #0072ff); /* Full page gradient background */
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        min-height: 100vh;
+        color: #ffffff;
+    }
+
+    .card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(123, 143, 161, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-control:focus {
+        border-color: #7b8fa1;
+        box-shadow: 0 0 0 0.2rem rgba(123, 143, 161, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(45deg, #7b8fa1, #5a6c7d);
+        border: none;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(45deg, #5a6c7d, #4a5d6a);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(123, 143, 161, 0.4);
+    }
+
+    .text-primary {
+        color: #7b8fa1 !important;
+    }
+
+    .text-info {
+        color: #5a6c7d !important;
+    }
+
+    /* Alert styling */
+    .alert {
+        border: none;
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+    }
+
+    /* Form animations */
+    .form-floating {
+        animation: fadeInUp 0.6s ease-out;
+        animation-fill-mode: both;
+    }
+
+    .form-floating:nth-child(1) { animation-delay: 0.1s; }
+    .form-floating:nth-child(2) { animation-delay: 0.2s; }
+    .form-floating:nth-child(3) { animation-delay: 0.3s; }
+    .form-floating:nth-child(4) { animation-delay: 0.4s; }
+    .form-floating:nth-child(5) { animation-delay: 0.5s; }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Card entrance animation */
+    .card {
+        animation: cardEntrance 0.8s ease-out;
+    }
+
+    @keyframes cardEntrance {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     }
 </style>
 

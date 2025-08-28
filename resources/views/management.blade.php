@@ -13,7 +13,7 @@
         </h2>
         <p class="text-muted text-center mb-4">Record, track and collaborate on customer escalations</p>
 
-        <form id="ticketSearchForm" class="p-4 shadow rounded bg-white">
+        <form id="ticketSearchForm" class="form-card p-4 shadow rounded">
             @csrf
             <!-- Initial Customer Information -->
             <div class="d-flex align-items-center justify-content-between mb-3">
@@ -102,10 +102,12 @@
                 });
             });
         </script>
+        
+        <hr class="my-4">
 
         <!-- Customer Detail From COMS -->
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white d-flex align-items-center">
+            <div class="card-header card-header-warning d-flex align-items-center">
                 <i class="bi bi-database-gear text-warning me-2"></i>
                 <span class="fw-semibold text-warning">Customer Detail From COMS</span>
             </div>
@@ -225,7 +227,7 @@
                         </div>
 
                         {{-- Chat input --}}
-                        <div class="card-footer bg-white">
+                        <div class="card-footer card-footer-grey">
                             <form id="chatForm" action="{{ route('management.feedback.store', $ici->ticket_no) }}" method="POST" class="chat-input-form">
                                 @csrf
                                 <div class="input-group">
@@ -372,65 +374,214 @@
 </section>
 
 <style>
-/* Agent/Management shared page polish */
-.agent-page .card {
-    border-radius: 14px;
-}
+    :root {
+        --primary: #7b8fa1;
+        --secondary: #5a6c7d;
+        --dark: #2c3e50;
+        --light: #34495e;
+        --accent: #4a5d6a;
+        --warning: #f59f00;
+    }
 
-.agent-page .card-header {
-    border-bottom: 1px solid rgba(0,0,0,.05);
-}
+    .agent-page {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        min-height: 100vh;
+    }
 
-.agent-page label.form-label {
-    color: #495057;
-}
+    .agent-page .card {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 4px 20px rgba(123, 143, 161, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+    }
 
-.agent-page .form-control,
-.agent-page .form-select {
-    border-radius: 10px;
-}
+    .agent-page .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(123, 143, 161, 0.15);
+    }
 
-/* Chat area */
-.chat-scroll {
-    background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
-}
-.chat-scroll::-webkit-scrollbar {
-    width: 8px;
-}
-.chat-scroll::-webkit-scrollbar-thumb {
-    background: #d0d5dd;
-    border-radius: 8px;
-}
+    .agent-page .card-header {
+        background: linear-gradient(45deg, var(--primary), var(--secondary));
+        color: white;
+        border-bottom: none;
+        border-radius: 15px 15px 0 0 !important;
+        padding: 1.5rem;
+    }
 
-/* Chat bubbles subtle shadow */
-.chat-scroll .p-2.rounded-3 {
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-}
+    .card-header-warning {
+        background: rgba(245, 159, 0, 0.1) !important;
+        border-bottom: 1px solid rgba(245, 159, 0, 0.3) !important;
+        color: var(--dark) !important;
+    }
 
-/* Chat input */
-.chat-input-form .input-group > .form-control {
-    padding: 0.8rem 1rem;
-}
-.chat-input-form .btn {
-    padding: 0.55rem 1rem;
-    border-top-right-radius: 10px;
-    border-bottom-right-radius: 10px;
-}
+    .form-card {
+        background: rgba(123, 143, 161, 0.08);
+        border: 1px solid rgba(123, 143, 161, 0.2);
+    }
 
-/* Buttons */
-.agent-page .btn-primary {
-    box-shadow: 0 1px 2px rgba(13,110,253,.2);
-}
+    .card-footer-grey {
+        background: rgba(123, 143, 161, 0.05);
+        border-top: 1px solid rgba(123, 143, 161, 0.2);
+    }
 
-/* Table alignment */
-#happyCallForm table.table tr td {
-    vertical-align: middle;
-}
+    .agent-page label {
+        color: var(--dark);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
 
-/* Accent */
-.agent-page .text-warning {
-    color: #f59f00 !important;
-}
+    .agent-page .form-control,
+    .agent-page .form-select {
+        border: 2px solid rgba(123, 143, 161, 0.2);
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        background: rgba(123, 143, 161, 0.05);
+    }
+
+    .agent-page .form-control:focus,
+    .agent-page .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(123, 143, 161, 0.25);
+        background: rgba(123, 143, 161, 0.08);
+        transform: scale(1.02);
+    }
+
+    .agent-page .btn-primary {
+        background: linear-gradient(45deg, var(--primary), var(--secondary));
+        border: none;
+        border-radius: 25px;
+        padding: 0.8rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(123, 143, 161, 0.3);
+    }
+
+    .agent-page .btn-primary:hover {
+        background: linear-gradient(45deg, var(--secondary), var(--accent));
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(123, 143, 161, 0.4);
+    }
+
+    .agent-page .btn-outline-secondary {
+        color: var(--primary);
+        border-color: var(--primary);
+        transition: all 0.3s ease;
+    }
+
+    .agent-page .btn-outline-secondary:hover {
+        background: var(--primary);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .agent-page .form-floating {
+        animation: fadeInUp 0.6s ease-out;
+        animation-fill-mode: both;
+        margin-bottom: 1.5rem;
+    }
+
+    .agent-page .row.g-3 .col-md-6:nth-child(1) .form-floating,
+    .agent-page .row.g-3 .col-md-6:nth-child(2) .form-floating,
+    .agent-page .row.g-3 .col-md-3:nth-child(3) .form-floating,
+    .agent-page .row.g-3 .col-md-3:nth-child(4) .form-floating,
+    .agent-page .row.g-3 .col-md-6:nth-child(5) .form-floating,
+    .agent-page .row.g-3 .col-md-6:nth-child(6) .form-floating,
+    .agent-page .row.g-3 .col-md-6:nth-child(7) .form-floating,
+    .agent-page .row.g-3 .col-md-6:nth-child(8) .form-floating,
+    .agent-page .row.g-3 .col-12 .form-floating {
+        animation-delay: calc(var(--i, 0) * 0.1s);
+    }
+
+    .chat-scroll {
+        background: rgba(123, 143, 161, 0.05);
+        border-radius: 10px;
+    }
+
+    .chat-scroll::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .chat-scroll::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 8px;
+    }
+
+    .chat-scroll .p-2.rounded-3 {
+        box-shadow: 0 2px 8px rgba(123, 143, 161, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .chat-scroll .p-2.rounded-3:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(123, 143, 161, 0.2);
+    }
+
+    .chat-input-form .input-group>.form-control {
+        border: 2px solid rgba(123, 143, 161, 0.2);
+        border-radius: 25px 0 0 25px;
+    }
+
+    .chat-input-form .input-group>.form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(123, 143, 161, 0.25);
+    }
+
+    .chat-input-form .btn {
+        border-radius: 0 25px 25px 0;
+        background: linear-gradient(45deg, var(--primary), var(--secondary));
+        border: 2px solid var(--primary);
+        border-left: none;
+    }
+
+    .chat-input-form .btn:hover {
+        background: linear-gradient(45deg, var(--secondary), var(--accent));
+        border-color: var(--secondary);
+    }
+
+    .agent-page .text-primary { color: var(--primary) !important; }
+    .agent-page .text-warning { color: var(--warning) !important; }
+
+    .badge {
+        background: linear-gradient(45deg, var(--primary), var(--secondary)) !important;
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .alert-success {
+        background: rgba(40, 167, 69, 0.1);
+        border-left: 4px solid #28a745;
+        color: #155724;
+    }
+
+    .alert-danger {
+        background: rgba(220, 53, 69, 0.1);
+        border-left: 4px solid #dc3545;
+        color: #721c24;
+    }
+
+    footer {
+        background: linear-gradient(135deg, var(--dark), var(--light)) !important;
+        color: white !important;
+        border-radius: 15px 15px 0 0;
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+        .agent-page .card { margin: 0.5rem; }
+        .agent-page .form-floating { animation-duration: 0.4s; }
+    }
 </style>
 
 <!-- ⚫ Footer -->

@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
+
+        // Register session timeout middleware for web routes
+        $middleware->web(\App\Http\Middleware\SessionTimeoutMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
