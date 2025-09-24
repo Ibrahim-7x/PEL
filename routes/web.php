@@ -16,6 +16,10 @@ use App\Http\Controllers\ProfileController;
 
 Auth::routes();
 
+Route::get('/', function () {
+    return view('auth.login');
+});
+
 Route::get('/welcome', function () {
     return view('welcome');
 })->middleware('auth')->name('welcome');
@@ -36,7 +40,10 @@ Route::middleware(['auth', 'role:Agent'])->group(function () {
     Route::post('/home-agent/ticket/{ticket_no}/feedback', [AgentController::class, 'storeFeedback'])->name('agent.feedback.store');
     Route::post('/home-agent/search-ticket', [AgentController::class, 'searchTicket'])->name('agent.ticket.search');
     Route::get('/home-agent/ticket/{ticket_no}/feedbacks', [AgentController::class, 'getFeedbacks'])->name('agent.feedback.list');
-    Route::post('/agent/{ticket_no}/happy-call', [AgentController::class, 'saveHappyCallStatus'])->name('agent.happy-call.save');});
+    Route::post('/agent/{ticket_no}/happy-call', [AgentController::class, 'saveHappyCallStatus'])->name('agent.happy-call.save');
+    // Route::post('/home-agent/fetch-coms', [AgentController::class, 'fetchComsData'])->name('agent.fetch.coms');
+    Route::post('/fetch-coms-data', [AgentController::class, 'fetchComsData'])->name('agent.fetch.coms');
+});
 
 // Management routes
 Route::middleware(['auth', 'role:Management'])->group(function () {
@@ -62,6 +69,3 @@ Route::middleware(['auth', 'role:Management'])->group(function () {
 
 // Logout
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
-
-
-

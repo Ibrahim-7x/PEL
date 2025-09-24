@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreHappyCallStatusRequest;
 use App\Models\ServiceCenter;
 use App\Models\ComplaintCategory;
 use App\Models\CaseStatus;
@@ -191,6 +195,49 @@ class AgentController extends Controller
         }
     }
 
+    public function fetchComsData(Request $request)
+    {
+        $complaintNo = $request->input('complaint_number');
+
+        if (!$complaintNo) {
+            return response()->json(['error' => 'Complaint number is required'], 400);
+        }
+
+        try {
+            // Call external COMS API - try with query parameter as shown in Postman
+            $response = Http::timeout(10)->post(
+                'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo)
+            );
+
+            if ($response->successful()) {
+                $data = $response->json();
+    
+                if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
+                    return response()->json($data['ComplaintDetails'][0]);
+                } else {
+                    return response()->json(['error' => 'Complaint not found or invalid response'], 404);
+                }
+            } else {
+                // Log the actual API response for debugging
+                Log::error('COMS API error response', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'complaint_no' => $complaintNo
+                ]);
+    
+                return response()->json([
+                    'error' => 'COMS API returned error: ' . $response->status(),
+                    'details' => $response->body()
+                ], 502);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Unable to connect to COMS API. Please try again later.',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getFeedbacks(Request $request, string $ticket_no)
     {
         $ici = InitialCustomerInformation::where('ticket_no', $ticket_no)->firstOrFail();
@@ -211,38 +258,90 @@ class AgentController extends Controller
         return response()->json($feedbacks);
     }
 
-    public function saveHappyCallStatus(Request $request, string $ticket_no)
+    /**
+     * Save Happy Call Status with improved validation and error handling
+     *
+     * @param StoreHappyCallStatusRequest $request
+     * @param string $ticket_no
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function saveHappyCallStatus(StoreHappyCallStatusRequest $request, string $ticket_no)
     {
-        $ticket = InitialCustomerInformation::where('ticket_no', $ticket_no)->first();
+        try {
+            // Use database transaction for data consistency
+            return DB::transaction(function () use ($request, $ticket_no) {
+                // Find ticket with optimized query (select only needed columns)
+                $ticket = InitialCustomerInformation::select('id', 'ticket_no')
+                    ->where('ticket_no', $ticket_no)
+                    ->lockForUpdate() // Prevent race conditions
+                    ->first();
 
-        if (!$ticket) {
-            return back()->withErrors(['error' => 'Ticket not found.']);
+                // Check if ticket exists
+                if (!$ticket) {
+                    Log::warning('Attempted to save Happy Call for non-existent ticket', [
+                        'ticket_no' => $ticket_no,
+                        'user_id' => auth()->id(),
+                        'ip' => request()->ip(),
+                    ]);
+                    return back()->withErrors(['error' => 'Ticket not found.']);
+                }
+
+                // Check for existing Happy Call with optimized query
+                $existingHappyCall = HappyCallStatus::select('id')
+                    ->where('ici_id', $ticket->id)
+                    ->exists();
+
+                if ($existingHappyCall) {
+                    Log::info('Duplicate Happy Call attempt blocked', [
+                        'ticket_no' => $ticket_no,
+                        'user_id' => auth()->id(),
+                    ]);
+                    return back()->withErrors(['error' => 'Happy Call already exists for this ticket.']);
+                }
+
+                // Create Happy Call status with validated and sanitized data
+                $happyCallStatus = HappyCallStatus::create([
+                    'ici_id'             => $ticket->id,
+                    'resolved_date'      => $request->validated()['resolved_date'],
+                    'happy_call_date'    => $request->validated()['happy_call_date'],
+                    'customer_satisfied' => $request->validated()['customer_satisfied'],
+                    'delay_reason'       => $request->validated()['delay_reason'],
+                    'voice_of_customer'  => $request->validated()['voice_of_customer'],
+                ]);
+
+                // Log successful creation
+                Log::info('Happy Call status created successfully', [
+                    'ticket_no' => $ticket_no,
+                    'happy_call_id' => $happyCallStatus->id,
+                    'user_id' => auth()->id(),
+                ]);
+
+                return back()->with('success', 'Happy Call status saved successfully!');
+            });
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle database-specific errors
+            Log::error('Database error while saving Happy Call status', [
+                'ticket_no' => $ticket_no,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return back()->withErrors([
+                'error' => 'A database error occurred. Please try again later.'
+            ]);
+        } catch (\Exception $e) {
+            // Handle general exceptions
+            Log::error('Unexpected error while saving Happy Call status', [
+                'ticket_no' => $ticket_no,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return back()->withErrors([
+                'error' => 'An unexpected error occurred. Please contact support if the problem persists.'
+            ]);
         }
-
-        // Prevent duplicate Happy Call for same ticket
-        if (HappyCallStatus::where('ici_id', $ticket->id)->exists()) {
-            return back()->withErrors(['error' => 'Happy Call already exists for this ticket.']);
-        }
-
-        $request->validate([
-            'resolved_date'      => 'required|date',
-            'happy_call_date'    => 'required|date',
-            'customer_satisfied' => 'required|in:Yes,No',
-            'delay_reason'       => 'nullable|string|max:1000',
-            'voice_of_customer'  => 'nullable|string|max:2000',
-        ]);
-
-        HappyCallStatus::create([
-            'ici_id'             => $ticket->id, // foreign key
-            'resolved_date'      => $request->resolved_date,
-            'happy_call_date'    => $request->happy_call_date,
-            'customer_satisfied' => $request->customer_satisfied,
-            'delay_reason'       => $request->delay_reason,
-            'voice_of_customer'  => $request->voice_of_customer,
-        ]);
-
-        return back()->with('success', 'Happy Call status saved successfully!');
     }
-
-
 }

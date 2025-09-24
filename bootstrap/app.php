@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Register session timeout middleware for web routes
         $middleware->web(\App\Http\Middleware\SessionTimeoutMiddleware::class);
+
+        // Exclude API routes from CSRF verification
+        $middleware->validateCsrfTokens(except: [
+            'fetch-coms-data',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
