@@ -47,7 +47,7 @@
                             <label class="form-label fw-semibold">Complaint #</label>
                             <div class="input-group">
                                 <input type="text" id="complaint_number" name="complaint_number" class="form-control"
-                                    placeholder="Enter COMS Complaint #">
+                                    placeholder="000000-000000">
                                 <button type="button" id="searchComplaintBtn" class="btn btn-primary">
                                     <i class="bi bi-search"></i>
                                 </button>

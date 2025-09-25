@@ -53,7 +53,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Received COMS data:', data);
 
                 if (data.error) {
-                    alert('Error: ' + data.error);
+                    // Show specific error messages for better user experience
+                    if (data.error === 'Complaint number is invalid') {
+                        alert('❌ Complaint number is invalid. Please check the number and try again.');
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
                 } else {
                     // Populate form fields with API data
                     setValue('job_number', data.JobNo || '');

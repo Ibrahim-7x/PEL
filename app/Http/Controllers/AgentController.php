@@ -218,13 +218,26 @@ class AgentController extends Controller
                     return response()->json(['error' => 'Complaint not found or invalid response'], 404);
                 }
             } else {
+                // Try to parse the error response
+                $errorData = null;
+                try {
+                    $errorData = $response->json();
+                } catch (\Exception $e) {
+                    // If we can't parse JSON, use the raw body
+                }
+
+                // Check if this is an invalid complaint number (ComplaintDetails: -1)
+                if ($errorData && isset($errorData['ComplaintDetails']) && $errorData['ComplaintDetails'] === -1) {
+                    return response()->json(['error' => 'Complaint number is invalid'], 404);
+                }
+
                 // Log the actual API response for debugging
                 Log::error('COMS API error response', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                     'complaint_no' => $complaintNo
                 ]);
-    
+
                 return response()->json([
                     'error' => 'COMS API returned error: ' . $response->status(),
                     'details' => $response->body()
