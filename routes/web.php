@@ -16,6 +16,8 @@ use App\Http\Controllers\ProfileController;
 
 Auth::routes();
 
+Route::post('/fetch-coms-data', [App\Http\Controllers\AgentController::class, 'fetchComsData'])->middleware('auth')->name('fetch.coms');
+
 Route::get('/', function () {
     return view('auth.login');
 });
@@ -42,7 +44,7 @@ Route::middleware(['auth', 'role:Agent'])->group(function () {
     Route::get('/home-agent/ticket/{ticket_no}/feedbacks', [AgentController::class, 'getFeedbacks'])->name('agent.feedback.list');
     Route::post('/agent/{ticket_no}/happy-call', [AgentController::class, 'saveHappyCallStatus'])->name('agent.happy-call.save');
     // Route::post('/home-agent/fetch-coms', [AgentController::class, 'fetchComsData'])->name('agent.fetch.coms');
-    Route::post('/fetch-coms-data', [AgentController::class, 'fetchComsData'])->name('agent.fetch.coms');
+    // Route::post('/fetch-coms-data', [AgentController::class, 'fetchComsData'])->name('agent.fetch.coms');
 });
 
 // Management routes
@@ -52,7 +54,7 @@ Route::middleware(['auth', 'role:Management'])->group(function () {
     Route::post('/home-management/ticket/{ticket_no}/feedback', [ManagementController::class, 'storeFeedback'])->name('management.feedback.store');
     Route::post('/home-management/search-ticket', [ManagementController::class, 'searchTicket'])->name('management.ticket.search');
     Route::get('/home-management/ticket/{ticket_no}/feedbacks', [ManagementController::class, 'getFeedbacks'])->name('management.feedback.list');
-    Route::post('/fetch-coms-data', [ManagementController::class, 'fetchComsData'])->name('agent.fetch.coms');
+    // Route::post('/fetch-coms-data', [ManagementController::class, 'fetchComsData'])->name('agent.fetch.coms');
 });
 
 // Export routes

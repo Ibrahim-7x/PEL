@@ -113,6 +113,8 @@ class ManagementController extends Controller
             return response()->json(['error' => 'Complaint number is required'], 400);
         }
 
+        \Log::info('ManagementController fetchComsData called', ['user_role' => auth()->user()->role ?? 'none', 'complaint_no' => $complaintNo]);
+
         try {
             // Call external COMS API - try with query parameter as shown in Postman
             $response = Http::timeout(10)->post(
@@ -120,8 +122,12 @@ class ManagementController extends Controller
             );
 
             if ($response->successful()) {
-                $data = $response->json();
-    
+                try {
+                    $data = $response->json();
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'Invalid response from COMS API'], 502);
+                }
+
                 if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
                     return response()->json($data['ComplaintDetails'][0]);
                 } else {
