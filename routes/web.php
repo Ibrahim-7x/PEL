@@ -52,6 +52,7 @@ Route::middleware(['auth', 'role:Management'])->group(function () {
     Route::post('/home-management/ticket/{ticket_no}/feedback', [ManagementController::class, 'storeFeedback'])->name('management.feedback.store');
     Route::post('/home-management/search-ticket', [ManagementController::class, 'searchTicket'])->name('management.ticket.search');
     Route::get('/home-management/ticket/{ticket_no}/feedbacks', [ManagementController::class, 'getFeedbacks'])->name('management.feedback.list');
+    Route::post('/fetch-coms-data', [ManagementController::class, 'fetchComsData'])->name('agent.fetch.coms');
 });
 
 // Export routes

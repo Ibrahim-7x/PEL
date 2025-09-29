@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use App\Models\InitialCustomerInformation;
 use App\Models\Feedback;
@@ -100,6 +102,62 @@ class ManagementController extends Controller
                 ], 500);
             }
             throw $e;
+        }
+    }
+
+    public function fetchComsData(Request $request)
+    {
+        $complaintNo = $request->input('complaint_number');
+
+        if (!$complaintNo) {
+            return response()->json(['error' => 'Complaint number is required'], 400);
+        }
+
+        try {
+            // Call external COMS API - try with query parameter as shown in Postman
+            $response = Http::timeout(10)->post(
+                'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo)
+            );
+
+            if ($response->successful()) {
+                $data = $response->json();
+    
+                if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
+                    return response()->json($data['ComplaintDetails'][0]);
+                } else {
+                    return response()->json(['error' => 'Complaint not found or invalid response'], 404);
+                }
+            } else {
+                // Try to parse the error response
+                $errorData = null;
+                try {
+                    $errorData = $response->json();
+                } catch (\Exception $e) {
+                    // If we can't parse JSON, use the raw body
+                }
+
+                // Check if this is an invalid complaint number (ComplaintDetails: -1)
+                if ($errorData && isset($errorData['ComplaintDetails']) && $errorData['ComplaintDetails'] === -1) {
+                    return response()->json(['error' => 'Complaint number is invalid'], 404);
+                }
+
+                // Log the actual API response for debugging
+                Log::error('COMS API error response', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'complaint_no' => $complaintNo
+                ]);
+
+                return response()->json([
+                    'error' => 'COMS API returned error: ' . $response->status(),
+                    'details' => $response->body()
+                ], 502);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Unable to connect to COMS API. Please try again later.',
+                'details' => $e->getMessage()
+            ], 500);
         }
     }
 
