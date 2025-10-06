@@ -58,6 +58,35 @@ class AgentController extends Controller
         ));
     }
 
+    // Chat page for agents
+    public function tIndex(Request $request)
+    {
+        $delayReason = DelayReason::orderBy('reason')->get();
+
+        $ici = null;
+        $feedbacks = collect();
+
+        // Honor ticket_no on any request or from session after form submission
+        $ticketNo = $request->ticket_no ?: session('ticket_no');
+        if ($ticketNo) {
+            $ici = InitialCustomerInformation::with('happyCallStatus')->where('ticket_no', $ticketNo)->first();
+            if ($ici) {
+                $feedbacks = Feedback::where('ici_id', $ici->id)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+            }
+        }
+
+        return view('t_agent', compact(
+            'ici',
+            'feedbacks',
+            'delayReason'
+        ))->with([
+            'success_message' => session('success'),
+            'submitted_ticket_no' => session('ticket_no')
+        ]);
+    }
+
     // Save new ICI record
     public function store(Request $request)
     {
@@ -174,10 +203,15 @@ class AgentController extends Controller
                 );
             }
 
+            // Check if happy call exists
+            $hasHappyCall = \DB::table('happy_call_status')
+                ->where('ici_id', $record->id)
+                ->exists();
+
             return response()->json([
                 'service_center'        => $record->service_center,
-                'complaint_escalation_date' => $record->complaint_escalation_date 
-                ? \Carbon\Carbon::parse($record->complaint_escalation_date)->format('Y-m-d') 
+                'complaint_escalation_date' => $record->complaint_escalation_date
+                ? \Carbon\Carbon::parse($record->complaint_escalation_date)->format('Y-m-d')
                 : '',
                 'case_status'           => $record->case_status,
                 'aging'                 => $aging,
@@ -186,6 +220,7 @@ class AgentController extends Controller
                 'reason_of_escalation'  => $record->reason_of_escalation,
                 'escalation_level'      => $record->escalation_level,
                 'voice_of_customer'        => $record->voice_of_customer,
+                'has_happy_call'        => $hasHappyCall,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -335,7 +370,10 @@ class AgentController extends Controller
                     'user_id' => auth()->id(),
                 ]);
 
-                return back()->with('success', 'Happy Call status saved successfully!');
+                return back()->with([
+                    'success' => 'Happy Call status saved successfully!',
+                    'ticket_no' => $ticket_no
+                ]);
             });
 
         } catch (\Illuminate\Database\QueryException $e) {

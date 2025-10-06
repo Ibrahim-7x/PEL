@@ -45,7 +45,14 @@
                 <a class="nav-link {{ request()->is('home-agent') || request()->is('home-management') ? 'active fw-bold' : '' }}"
                    href="{{ auth()->check() ? (auth()->user()->role === 'Agent' ? url('/home-agent') : url('/home-management')) : route('login') }}"
                    style="color: rgba(255,255,255,0.8); transition: all 0.3s ease; border-radius: 8px; padding: 10px 15px;">
-                    <i class="bi bi-clipboard-check me-2"></i><span class="sidebar-text">RU Case Form</span>
+                    <i class="bi bi-clipboard-check me-2"></i><span class="sidebar-text">RU Case Registration</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link {{ request()->is('t-agent') || request()->is('t-management') ? 'active fw-bold' : '' }}"
+                   href="{{ auth()->check() ? (auth()->user()->role === 'Agent' ? url('/t-agent') : url('/t-management')) : route('login') }}"
+                   style="color: rgba(255,255,255,0.8); transition: all 0.3s ease; border-radius: 8px; padding: 10px 15px;">
+                    <i class="bi bi-chat-dots me-2"></i><span class="sidebar-text">RU Case Tracking</span>
                 </a>
             </li>
             @if(auth()->check() && strtolower(auth()->user()->role) === 'management')

@@ -1,7 +1,7 @@
 // Counter for fetchNewFeedbacks calls
 window.fetchNewFeedbacksCount = window.fetchNewFeedbacksCount || 0;
 
-let lastFeedbackId = parseInt(document.querySelector('meta[name="last-feedback-id"]')?.content || '0', 10);
+window.lastFeedbackId = parseInt(document.querySelector('meta[name="last-feedback-id"]')?.content || '0', 10);
 let isPolling = false;
 
 function fetchNewFeedbacks() {
@@ -22,7 +22,7 @@ function fetchNewFeedbacks() {
             const chatBox = document.getElementById('chatScrollArea');
 
             data.forEach(fb => {
-                if (fb.id > lastFeedbackId) {
+                if (fb.id > window.lastFeedbackId) {
                     const isMe = fb.name === window.currentUser;
 
                     const bubble = document.createElement('div');
@@ -40,7 +40,7 @@ function fetchNewFeedbacks() {
                                         `;
                     chatBox.appendChild(bubble);
                     chatBox.scrollTop = chatBox.scrollHeight;
-                    lastFeedbackId = fb.id;
+                    window.lastFeedbackId = fb.id;
                 }
             });
         })
@@ -52,7 +52,7 @@ function pollNewMessages() {
     if (!window.feedbackListUrl) return;
     isPolling = true;
 
-    fetch(`${window.feedbackListUrl}?last_id=${lastFeedbackId}`)
+    fetch(`${window.feedbackListUrl}?last_id=${window.lastFeedbackId}`)
         .then(response => response.json())
         .then(data => {
             // Support both formats:
@@ -62,12 +62,12 @@ function pollNewMessages() {
 
             if (list.length > 0) {
                 // Only take new messages
-                const newOnes = list.filter(fb => Number(fb.id) > Number(lastFeedbackId));
+                const newOnes = list.filter(fb => Number(fb.id) > Number(window.lastFeedbackId));
 
                 if (newOnes.length > 0) {
                     appendNewMessages(newOnes);
                     // Advance lastFeedbackId to max seen
-                    lastFeedbackId = Math.max(Number(lastFeedbackId), ...newOnes.map(fb => Number(fb.id)));
+                    window.lastFeedbackId = Math.max(Number(window.lastFeedbackId), ...newOnes.map(fb => Number(fb.id)));
                     // Scroll to bottom if needed
                     scrollToBottom();
                 }
@@ -131,13 +131,13 @@ function reconfigureChatFromDOM() {
     window.agentIndexUrl = cfg.dataset.agentIndexUrl || window.agentIndexUrl;
     const id = parseInt(cfg.dataset.lastFeedbackId || '0', 10);
     if (!Number.isNaN(id)) {
-        lastFeedbackId = id;
+        window.lastFeedbackId = id;
     }
     console.log('Reconfigured chat from DOM:', {
         feedbackListUrl: window.feedbackListUrl,
         currentUser: window.currentUser,
         agentIndexUrl: window.agentIndexUrl,
-        lastFeedbackId
+        lastFeedbackId: window.lastFeedbackId
     });
     return true;
 }

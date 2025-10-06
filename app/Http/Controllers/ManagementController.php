@@ -44,6 +44,28 @@ class ManagementController extends Controller
         ));
     }
 
+    // Chat page for management
+    public function tIndex(Request $request)
+    {
+        $ici = null;
+        $feedbacks = collect();
+
+        if ($request->filled('ticket_no')) {
+            $ici = InitialCustomerInformation::where('ticket_no', $request->ticket_no)->first();
+
+            if ($ici) {
+                $feedbacks = Feedback::where('ici_id', $ici->id)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+            }
+        }
+
+        return view('t_management', compact(
+            'ici',
+            'feedbacks'
+        ));
+    }
+
     /**
      * Show the application dashboard.
      *
