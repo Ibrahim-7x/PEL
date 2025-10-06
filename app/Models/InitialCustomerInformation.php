@@ -11,6 +11,7 @@ class InitialCustomerInformation extends Model
 
     protected $fillable = [
         'ticket_no',
+        'complaint_number',
         'service_center',
         'complaint_escalation_date',
         'case_status',

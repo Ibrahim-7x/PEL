@@ -90,6 +90,14 @@ class AgentController extends Controller
     // Save new ICI record
     public function store(Request $request)
     {
+        // Debug: Log the complaint number being received
+        \Log::info('AgentController store method called', [
+            'complaint_number' => $request->complaint_number,
+            'complaint_number_hidden' => $request->complaint_number_hidden,
+            'ticket_no' => $request->ticket_no,
+            'all_request_data' => $request->all()
+        ]);
+
         $request->validate([
             'ticket_no' => 'required|unique:initial_customer_information,ticket_no',
             'service_center' => 'required',
@@ -102,8 +110,9 @@ class AgentController extends Controller
             'voice_of_customer' => 'required'
         ]);
 
-        InitialCustomerInformation::create([
+        $iciData = [
             'ticket_no' => $request->ticket_no,
+            'complaint_number' => $request->complaint_number_hidden ?: $request->complaint_number,
             'service_center' => $request->service_center,
             'complaint_escalation_date' => $request->complaint_escalation_date,
             'case_status' => $request->case_status,
@@ -113,6 +122,23 @@ class AgentController extends Controller
             'escalation_level' => $request->escalation_level,
             'voice_of_customer' => $request->voice_of_customer,
             'u_id' => auth()->id(),
+        ];
+
+        // Debug: Log what we're about to save
+        \Log::info('About to create ICI record', [
+            'ici_data' => $iciData,
+            'complaint_number_value' => $request->complaint_number,
+            'complaint_number_type' => gettype($request->complaint_number)
+        ]);
+
+        $ici = InitialCustomerInformation::create($iciData);
+
+        // Debug: Log what was actually saved
+        \Log::info('ICI record created successfully', [
+            'saved_ici_id' => $ici->id,
+            'saved_ticket_no' => $ici->ticket_no,
+            'saved_complaint_number' => $ici->complaint_number,
+            'all_saved_data' => $ici->toArray()
         ]);
 
         return redirect()->back()->with('success', 'Record saved successfully.');
@@ -288,6 +314,81 @@ class AgentController extends Controller
             return response()->json([
                 'error' => 'Unable to connect to COMS API. Please try again later.',
                 'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate a unique ticket number in the format YY-NNNN with yearly reset
+     *
+     * @return string
+     */
+    public function generateTicketNumber()
+    {
+        try {
+            // Get current year in YY format
+            $currentYear = date('y');
+
+            // Find the highest ticket number for the current year
+            $latestTicket = InitialCustomerInformation::where('ticket_no', 'like', $currentYear . '-%')
+                ->orderBy('ticket_no', 'desc')
+                ->first();
+
+            if ($latestTicket) {
+                // Extract the sequential number from the latest ticket
+                $latestNumber = intval(substr($latestTicket->ticket_no, -4));
+                $nextNumber = $latestNumber + 1;
+            } else {
+                // No tickets exist for this year, start from 0001
+                $nextNumber = 1;
+            }
+
+            // Format: YY-NNNN (e.g., 25-0001)
+            $ticketNumber = $currentYear . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
+            // Verify uniqueness (double-check in case of race conditions)
+            while (InitialCustomerInformation::where('ticket_no', $ticketNumber)->exists()) {
+                $nextNumber++;
+                $ticketNumber = $currentYear . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+            }
+
+            return $ticketNumber;
+
+        } catch (\Exception $e) {
+            Log::error('Error generating ticket number', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            // Fallback: generate a simple timestamp-based number
+            return date('y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        }
+    }
+
+    /**
+     * API endpoint to generate a new ticket number
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getTicketNumber(Request $request)
+    {
+        try {
+            $ticketNumber = $this->generateTicketNumber();
+
+            return response()->json([
+                'success' => true,
+                'ticket_number' => $ticketNumber
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in getTicketNumber endpoint', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to generate ticket number'
             ], 500);
         }
     }

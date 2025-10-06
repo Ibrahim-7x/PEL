@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Exclude API routes from CSRF verification
         $middleware->validateCsrfTokens(except: [
             'fetch-coms-data',
+            'generate-ticket-number',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

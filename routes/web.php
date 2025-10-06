@@ -17,6 +17,7 @@ use App\Http\Controllers\ProfileController;
 Auth::routes();
 
 Route::post('/fetch-coms-data', [App\Http\Controllers\AgentController::class, 'fetchComsData'])->middleware('auth')->name('fetch.coms');
+Route::get('/generate-ticket-number', [App\Http\Controllers\AgentController::class, 'getTicketNumber'])->middleware('auth')->name('generate.ticket.number');
 
 Route::get('/', function () {
     return view('auth.login');
