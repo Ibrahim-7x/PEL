@@ -317,9 +317,11 @@
                 function checkHappyCallStatus(ticketNo) {
                     console.log('🔍 Checking Happy Call status for ticket:', ticketNo);
 
-                    // Create a minimal request to check if Happy Call exists
+                    // Create a minimal request to check if Happy Call exists (no form data)
+                    const emptyFormData = new FormData();
                     fetch('/agent/' + ticketNo + '/happy-call', {
                         method: 'POST',
+                        body: emptyFormData, // Empty form data to trigger check mode
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
                             'X-Requested-With': 'XMLHttpRequest',
@@ -328,20 +330,35 @@
                     })
                     .then(response => {
                         console.log('📡 Happy Call check response status:', response.status);
-                        if (response.status === 409) {
+                        console.log('📡 Response text:', response.statusText);
+                        return response.text().then(text => {
+                            console.log('📄 Raw response:', text);
+                            try {
+                                return JSON.parse(text);
+                            } catch (e) {
+                                console.error('❌ Failed to parse JSON:', e);
+                                throw new Error('Invalid JSON response');
+                            }
+                        });
+                    })
+                    .then(data => {
+                        console.log('📋 Parsed response data:', data);
+
+                        if (data.success === false && data.error === 'Happy Call already exists for this ticket.') {
                             // 409 means Happy Call already exists - show banner, hide form
                             console.log('✅ Happy Call already exists for ticket:', ticketNo);
                             showHappyCallBanner();
                             hideHappyCallForm();
                             return { exists: true };
-                        } else if (response.ok) {
+                        } else if (data.success === true) {
                             // 200 means no Happy Call exists - show form, hide banner
                             console.log('❌ No Happy Call found for ticket:', ticketNo);
                             showHappyCallForm(ticketNo);
                             hideHappyCallBanner();
                             return { exists: false };
                         } else {
-                            throw new Error('HTTP ' + response.status);
+                            console.error('❌ Unexpected response data:', data);
+                            throw new Error('Unexpected response format');
                         }
                     })
                     .catch(error => {
@@ -405,6 +422,14 @@
                         const submitBtn = document.getElementById("happyCallSubmitBtn");
                         const formData = new FormData(form);
 
+                        // Debug: Log form data
+                        console.log('🚀 Happy Call form submission started');
+                        console.log('Form action:', form.action);
+                        console.log('Form data:');
+                        for (let [key, value] of formData.entries()) {
+                            console.log(key, value);
+                        }
+
                         // Show loading state
                         submitBtn.disabled = true;
                         submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Submitting...';
@@ -413,11 +438,17 @@
                             method: 'POST',
                             body: formData,
                             headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         })
-                        .then(response => response.json())
+                        .then(response => {
+                            console.log('📡 Response status:', response.status);
+                            console.log('📡 Response headers:', response.headers);
+                            return response.json();
+                        })
                         .then(data => {
+                            console.log('📄 Response data:', data);
                             // Reset button state
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = 'Submit Happy Call';
@@ -428,10 +459,12 @@
                                 showHappyCallBanner();
                                 console.log('🎉 Happy Call submitted successfully');
                             } else {
+                                console.error('❌ Server returned error:', data);
                                 alert('Error: ' + (data.error || 'Unknown error'));
                             }
                         })
                         .catch(error => {
+                            console.error('💥 Network error:', error);
                             // Reset button state
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = 'Submit Happy Call';
@@ -624,20 +657,8 @@
 
                             // Handle Happy Call form/banner for existing tickets
                             if (ticketData.exists && ticketData.ticket_data) {
-                                // Check if happy call exists for this ticket
-                                const ticketHasHappyCall = ticketData.ticket_data.has_happy_call;
-
-                                if (ticketHasHappyCall) {
-                                    console.log('✅ Happy Call exists for ticket:', ticketData.ticket_no);
-                                    showHappyCallBanner();
-                                    hideHappyCallForm();
-                                } else {
-                                    console.log('❌ No Happy Call for ticket:', ticketData.ticket_no);
-                                    showHappyCallForm(ticketData.ticket_no);
-                                    hideHappyCallBanner();
-                                }
-
-                                // Always check Happy Call status for existing tickets to ensure accuracy
+                                // Check if happy call exists for this ticket using the same method as the status check
+                                // This ensures consistency between initial check and ongoing status
                                 setTimeout(() => {
                                     checkHappyCallStatus(ticketData.ticket_no);
                                 }, 100);

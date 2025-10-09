@@ -578,6 +578,13 @@ class AgentController extends Controller
                     ->where('ici_id', $existingTicket->id)
                     ->exists();
 
+                Log::info('Happy Call existence check in fetchTicketInfo', [
+                    'ticket_no' => $existingTicket->ticket_no,
+                    'ici_id' => $existingTicket->id,
+                    'has_happy_call' => $hasHappyCall,
+                    'user_id' => auth()->id(),
+                ]);
+
                 return response()->json([
                     'success' => true,
                     'exists' => true,
@@ -733,115 +740,39 @@ class AgentController extends Controller
      * Save Happy Call Status with improved validation and error handling
      * Also handles checking if Happy Call exists (when no form data provided)
      *
-     * @param StoreHappyCallStatusRequest $request
+     * @param Request $request
      * @param string $ticket_no
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function saveHappyCallStatus(Request $request, string $ticket_no)
     {
         try {
+            // Debug logging
+            Log::info('🚀 Happy Call save attempt started', [
+                'ticket_no' => $ticket_no,
+                'request_method' => $request->method(),
+                'request_data' => $request->all(),
+                'user_id' => auth()->id(),
+            ]);
+
             // Find ticket with optimized query (select only needed columns)
             $ticket = InitialCustomerInformation::select('id', 'ticket_no')
                 ->where('ticket_no', $ticket_no)
                 ->first();
 
-            // Check if ticket exists
-            if (!$ticket) {
-                Log::warning('Attempted to save/check Happy Call for non-existent ticket', [
-                    'ticket_no' => $ticket_no,
-                    'user_id' => auth()->id(),
-                    'ip' => request()->ip(),
-                ]);
+            // Check if this is a status check (no form data) vs actual form submission
+            $hasFormData = $request->filled(['resolved_date', 'happy_call_date', 'customer_satisfied', 'delay_reason']);
 
-                $error = 'Ticket not found.';
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json(['success' => false, 'error' => $error], 404);
-                }
-                return back()->withErrors(['error' => $error]);
+            // If no form data, this is just a status check
+            if (!$hasFormData) {
+                return $this->handleHappyCallStatusCheck($ticket, $ticket_no);
             }
 
-            // Check for existing Happy Call with optimized query
-            $existingHappyCall = HappyCallStatus::select('id')
-                ->where('ici_id', $ticket->id)
-                ->exists();
+            // If we have form data, validate and create
+            return $this->handleHappyCallCreation($request, $ticket, $ticket_no);
 
-            if ($existingHappyCall) {
-                Log::info('Happy Call already exists for this ticket', [
-                    'ticket_no' => $ticket_no,
-                    'user_id' => auth()->id(),
-                ]);
-
-                $error = 'Happy Call already exists for this ticket.';
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json(['success' => false, 'error' => $error], 409);
-                }
-                return back()->withErrors(['error' => $error]);
-            }
-
-            // If we reach here and it's just a check (no form data), return success
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => true, 'message' => 'No Happy Call exists, ready to create']);
-            }
-
-            // Use database transaction for data consistency (only for actual creation)
-            $result = DB::transaction(function () use ($request, $ticket_no) {
-
-                // Create Happy Call status with validated and sanitized data
-                $happyCallStatus = HappyCallStatus::create([
-                    'ici_id'             => $ticket->id,
-                    'resolved_date'      => $request->validated()['resolved_date'],
-                    'happy_call_date'    => $request->validated()['happy_call_date'],
-                    'customer_satisfied' => $request->validated()['customer_satisfied'],
-                    'delay_reason'       => $request->validated()['delay_reason'],
-                    'voice_of_customer'  => $request->validated()['voice_of_customer'],
-                ]);
-
-                // Log successful creation
-                Log::info('Happy Call status created successfully', [
-                    'ticket_no' => $ticket_no,
-                    'happy_call_id' => $happyCallStatus->id,
-                    'user_id' => auth()->id(),
-                ]);
-
-                if ($request->ajax()) {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Happy Call submitted successfully!'
-                    ]);
-                }
-
-                return back()->with([
-                    'success' => 'Happy Call status saved successfully!',
-                    'ticket_no' => $ticket_no
-                ]);
-            });
-
-            // Return the result if it's a JSON response
-            if ($result instanceof \Illuminate\Http\JsonResponse) {
-                return $result;
-            }
-
-            return $result;
-
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Handle database-specific errors
-            Log::error('Database error while saving Happy Call status', [
-                'ticket_no' => $ticket_no,
-                'error' => $e->getMessage(),
-                'user_id' => auth()->id(),
-            ]);
-
-            $error = 'A database error occurred. Please try again later.';
-            if ($request->ajax()) {
-                return response()->json(['success' => false, 'error' => $error], 500);
-            }
-
-            return back()->withErrors([
-                'error' => $error
-            ]);
         } catch (\Exception $e) {
-            // Handle general exceptions
-            Log::error('Unexpected error while saving Happy Call status', [
+            Log::error('Unexpected error in saveHappyCallStatus', [
                 'ticket_no' => $ticket_no,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -849,13 +780,175 @@ class AgentController extends Controller
             ]);
 
             $error = 'An unexpected error occurred. Please contact support if the problem persists.';
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'error' => $error], 500);
             }
 
-            return back()->withErrors([
-                'error' => $error
+            return back()->withErrors(['error' => $error]);
+        }
+    }
+
+    /**
+     * Handle happy call status check (no form data)
+     */
+    private function handleHappyCallStatusCheck($ticket, $ticket_no)
+    {
+        // Check if ticket exists
+        if (!$ticket) {
+            Log::warning('Attempted to check Happy Call for non-existent ticket', [
+                'ticket_no' => $ticket_no,
+                'user_id' => auth()->id(),
+                'ip' => request()->ip(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => 'Ticket not found.'], 404);
+        }
+
+        // Check for existing Happy Call with optimized query
+        $existingHappyCall = HappyCallStatus::select('id')
+            ->where('ici_id', $ticket->id)
+            ->exists();
+
+        Log::info('Happy Call existence check in handleHappyCallStatusCheck', [
+            'ticket_no' => $ticket_no,
+            'ici_id' => $ticket->id,
+            'existing_happy_call' => $existingHappyCall,
+            'user_id' => auth()->id(),
+        ]);
+
+        if ($existingHappyCall) {
+            Log::info('Happy Call already exists for this ticket', [
+                'ticket_no' => $ticket_no,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => 'Happy Call already exists for this ticket.'], 409);
+        }
+
+        // No Happy Call exists, ready to create
+        return response()->json(['success' => true, 'message' => 'No Happy Call exists, ready to create']);
+    }
+
+    /**
+     * Handle happy call creation (with form data)
+     */
+    private function handleHappyCallCreation($request, $ticket, $ticket_no)
+    {
+        // Validate the request data
+        $request->validate([
+            'resolved_date' => [
+                'required',
+                'date',
+                'before_or_equal:happy_call_date',
+            ],
+            'happy_call_date' => [
+                'required',
+                'date',
+                'after_or_equal:resolved_date',
+            ],
+            'customer_satisfied' => [
+                'required',
+                Rule::in(['Yes', 'No']),
+            ],
+            'delay_reason' => [
+                'required',
+                'string',
+                'max:1000',
+                'regex:/^[^<>{}]*$/', // Prevent XSS by blocking HTML tags
+            ],
+            'voice_of_customer' => [
+                'nullable',
+                'string',
+                'max:2000',
+                'regex:/^[^<>{}]*$/', // Prevent XSS by blocking HTML tags
+            ],
+        ]);
+
+        // Custom validation for date logic
+        $resolvedDate = $request->input('resolved_date');
+        $happyCallDate = $request->input('happy_call_date');
+
+        if ($resolvedDate && $happyCallDate) {
+            $resolved = Carbon::parse($resolvedDate);
+            $happyCall = Carbon::parse($happyCallDate);
+            $today = Carbon::today();
+
+            // Business rule: Resolution date cannot be in the future
+            if ($resolved->isAfter($today)) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Resolution date cannot be in the future.'
+                    ], 422);
+                }
+                return back()->withErrors(['resolved_date' => 'Resolution date cannot be in the future.']);
+            }
+
+            // Business rule: Happy call should not be more than 30 days after resolution
+            if ($happyCall->diffInDays($resolved) > 30) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Happy call date should not be more than 30 days after resolution date.'
+                    ], 422);
+                }
+                return back()->withErrors(['happy_call_date' => 'Happy call date should not be more than 30 days after resolution date.']);
+            }
+
+            // Business rule: Resolution should not be more than 90 days ago
+            if ($resolved->diffInDays($today) > 90) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Resolution date should not be more than 90 days ago.'
+                    ], 422);
+                }
+                return back()->withErrors(['resolved_date' => 'Resolution date should not be more than 90 days ago.']);
+            }
+        }
+
+        // Use database transaction for data consistency (only for actual creation)
+        $result = DB::transaction(function () use ($request, $ticket_no, $ticket) {
+
+            Log::info('🔄 Starting Happy Call creation in database transaction', [
+                'ticket_no' => $ticket_no,
+                'ici_id' => $ticket->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            // Create Happy Call status with validated and sanitized data
+            $happyCallStatus = HappyCallStatus::create([
+                'ici_id'             => $ticket->id,
+                'resolved_date'      => $request->input('resolved_date'),
+                'happy_call_date'    => $request->input('happy_call_date'),
+                'customer_satisfied' => $request->input('customer_satisfied'),
+                'delay_reason'       => $request->input('delay_reason'),
+                'voice_of_customer'  => $request->input('voice_of_customer'),
+            ]);
+
+            // Log successful creation
+            Log::info('✅ Happy Call status created successfully', [
+                'ticket_no' => $ticket_no,
+                'happy_call_id' => $happyCallStatus->id,
+                'ici_id' => $ticket->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            return $happyCallStatus;
+        });
+
+        // Handle the response based on request type
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Happy Call submitted successfully!',
+                'happy_call_id' => $result->id
             ]);
         }
+
+        return back()->with([
+            'success' => 'Happy Call status saved successfully!',
+            'ticket_no' => $ticket_no
+        ]);
     }
 }

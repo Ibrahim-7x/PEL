@@ -119,6 +119,11 @@ class StoreHappyCallStatusRequest extends FormRequest
             $happyCall = Carbon::parse($happyCallDate);
             $today = Carbon::today();
 
+            // Business rule: Resolution date cannot be in the future
+            if ($resolved->isAfter($today)) {
+                $validator->errors()->add('resolved_date', 'Resolution date cannot be in the future.');
+            }
+
             // Business rule: Happy call should not be more than 30 days after resolution
             if ($happyCall->diffInDays($resolved) > 30) {
                 $validator->errors()->add('happy_call_date', 'Happy call date should not be more than 30 days after resolution date.');
