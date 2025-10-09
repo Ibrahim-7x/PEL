@@ -146,17 +146,8 @@
                         <input type="date" class="form-control" name="complaint_escalation_date"
                             id="complaint_escalation_date" value="{{ now()->format('Y-m-d') }}" readonly>
                     </div>
-                    {{-- <div class="col-md-3">
-                        <label for="case_status" class="form-label fw-semibold">Case Status</label>
-                        <select name="case_status" id="case_status" class="form-control" required>
-                            <option value="">-- Select Case Status --</option>
-                            @foreach ($caseStatus as $status)
-                                <option value="{{ $status->status }}" {{ $status->status == 'In-Progress' ? 'selected' : '' }}>{{ $status->status }}</option>
-                            @endforeach
-                        </select>
-                    </div> --}}
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold">Escalation Level</label>
+                        <label class="form-label fw-semibold">Case Status</label>
                         <select name="case_status" id="case_status" class="form-select" required>
                             <option value="">-- Select Case Status --</option>
                             <option value="In Progress" selected>In Progress</option>
