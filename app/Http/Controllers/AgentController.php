@@ -17,6 +17,7 @@ use App\Models\InitialCustomerInformation;
 use App\Models\Feedback;
 use App\Models\HappyCallStatus;
 use App\Models\DelayReason;
+use App\Models\InitialCustomerInformationAuditLog;
 
 class AgentController extends Controller
 {
@@ -30,7 +31,7 @@ class AgentController extends Controller
     {
         $serviceCenters = ServiceCenter::orderBy('sc_name')->get();
         $complaintCategory = ComplaintCategory::orderBy('category_name')->get();
-        $caseStatus = CaseStatus::orderBy('status')->get();
+        //$caseStatus = CaseStatus::orderBy('status')->get();
         $reasonofEscalation = EscalationReason::orderBy('reason')->get();
         $delayReason = DelayReason::orderBy('reason')->get();
 
@@ -50,7 +51,7 @@ class AgentController extends Controller
         return view('agent', compact(
             'serviceCenters',
             'complaintCategory',
-            'caseStatus',
+            //'caseStatus',
             'reasonofEscalation',
             'ici',
             'feedbacks',
@@ -61,6 +62,10 @@ class AgentController extends Controller
     // Chat page for agents
     public function tIndex(Request $request)
     {
+        $serviceCenters = ServiceCenter::orderBy('sc_name')->get();
+        $complaintCategory = ComplaintCategory::orderBy('category_name')->get();
+        $caseStatus = CaseStatus::orderBy('status')->get();
+        $reasonofEscalation = EscalationReason::orderBy('reason')->get();
         $delayReason = DelayReason::orderBy('reason')->get();
 
         $ici = null;
@@ -78,6 +83,10 @@ class AgentController extends Controller
         }
 
         return view('t_agent', compact(
+            'serviceCenters',
+            'complaintCategory',
+            'caseStatus',
+            'reasonofEscalation',
             'ici',
             'feedbacks',
             'delayReason'
@@ -87,32 +96,18 @@ class AgentController extends Controller
         ]);
     }
 
-    // Save new ICI record
+    // Save or update ICI record based on complaint number
     public function store(Request $request)
     {
-        // Debug: Log the complaint number being received
-        \Log::info('AgentController store method called', [
-            'complaint_number' => $request->complaint_number,
-            'complaint_number_hidden' => $request->complaint_number_hidden,
-            'ticket_no' => $request->ticket_no,
-            'all_request_data' => $request->all()
-        ]);
 
-        $request->validate([
-            'ticket_no' => 'required|unique:initial_customer_information,ticket_no',
-            'service_center' => 'required',
-            'complaint_escalation_date' => 'required|date',
-            'case_status' => 'required',
-            'complaint_category' => 'required',
-            'agent_name' => 'required',
-            'reason_of_escalation' => 'required',
-            'escalation_level' => 'required',
-            'voice_of_customer' => 'required'
-        ]);
+        $complaintNumber = $request->complaint_number_hidden ?: $request->complaint_number;
+
+        // Check if this is an update (complaint number exists) or create (new complaint)
+        $existingTicket = InitialCustomerInformation::where('complaint_number', $complaintNumber)->first();
 
         $iciData = [
             'ticket_no' => $request->ticket_no,
-            'complaint_number' => $request->complaint_number_hidden ?: $request->complaint_number,
+            'complaint_number' => $complaintNumber,
             'service_center' => $request->service_center,
             'complaint_escalation_date' => $request->complaint_escalation_date,
             'case_status' => $request->case_status,
@@ -124,36 +119,148 @@ class AgentController extends Controller
             'u_id' => auth()->id(),
         ];
 
-        // Debug: Log what we're about to save
-        \Log::info('About to create ICI record', [
-            'ici_data' => $iciData,
-            'complaint_number_value' => $request->complaint_number,
-            'complaint_number_type' => gettype($request->complaint_number)
-        ]);
+        if ($existingTicket) {
+            // Update existing ticket
+            $request->validate([
+                'ticket_no' => 'required',
+                'complaint_number_hidden' => 'required',
+                'service_center' => 'required',
+                'complaint_escalation_date' => 'required|date',
+                'case_status' => 'required',
+                'complaint_category' => 'required',
+                'agent_name' => 'required',
+                'reason_of_escalation' => 'required',
+                'escalation_level' => 'required',
+                'voice_of_customer' => 'required'
+            ]);
 
-        $ici = InitialCustomerInformation::create($iciData);
+            // Check if escalation level should be auto-updated
+            $currentEscalation = $existingTicket->escalation_level;
+            $requestedEscalation = $request->escalation_level;
+            $nextEscalation = $this->getNextEscalationLevel($currentEscalation);
 
-        // Debug: Log what was actually saved
-        \Log::info('ICI record created successfully', [
-            'saved_ici_id' => $ici->id,
-            'saved_ticket_no' => $ici->ticket_no,
-            'saved_complaint_number' => $ici->complaint_number,
-            'all_saved_data' => $ici->toArray()
-        ]);
+            // Auto-update escalation level if user selected current level (not manually changed)
+            if ($requestedEscalation === $currentEscalation && $currentEscalation !== 'High') {
+                $iciData['escalation_level'] = $nextEscalation;
+                $escalationWasUpdated = true;
+                $oldEscalationLevel = $currentEscalation;
+            } else {
+                $escalationWasUpdated = false;
+                $oldEscalationLevel = $currentEscalation;
+            }
 
-        return redirect()->back()->with('success', 'Record saved successfully.');
+            $existingTicket->update($iciData);
+
+            // Get old values for logging (before update)
+            $oldValues = $existingTicket->getOriginal();
+
+            // Get new values for logging
+            $newValues = $existingTicket->fresh()->only([
+                'service_center', 'case_status', 'complaint_category',
+                'agent_name', 'reason_of_escalation', 'escalation_level',
+                'voice_of_customer', 'complaint_escalation_date'
+            ]);
+
+            // Determine changed fields
+            $changedFields = [];
+            foreach ($oldValues as $field => $oldValue) {
+                if (isset($newValues[$field]) && $oldValue != $newValues[$field]) {
+                    $changedFields[] = $field;
+                }
+            }
+
+            // Create log notes based on what changed
+            $logNotes = 'Ticket updated';
+            if ($escalationWasUpdated) {
+                $logNotes .= ' - escalation level auto-updated from ' . $oldEscalationLevel . ' to ' . $nextEscalation;
+            }
+
+            // Log the update activity
+            $this->logActivity(
+                $existingTicket->complaint_number,
+                $existingTicket->ticket_no,
+                'UPDATED',
+                $existingTicket->escalation_level,
+                $oldValues,
+                $newValues,
+                $changedFields,
+                $logNotes
+            );
+
+            $successMessage = $escalationWasUpdated ?
+                'Record updated successfully. Escalation level updated to ' . $nextEscalation . '.' :
+                'Record updated successfully.';
+
+            return redirect()->back()->with('success', $successMessage);
+        } else {
+            // Create new ticket
+            $request->validate([
+                'ticket_no' => 'required|unique:initial_customer_information,ticket_no',
+                'complaint_number_hidden' => 'required|unique:initial_customer_information,complaint_number',
+                'service_center' => 'required',
+                'complaint_escalation_date' => 'required|date',
+                'case_status' => 'required',
+                'complaint_category' => 'required',
+                'agent_name' => 'required',
+                'reason_of_escalation' => 'required',
+                'escalation_level' => 'required',
+                'voice_of_customer' => 'required'
+            ]);
+
+
+            $ici = InitialCustomerInformation::create($iciData);
+
+
+            // Log the creation activity
+            $this->logActivity(
+                $ici->complaint_number,
+                $ici->ticket_no,
+                'CREATED',
+                $ici->escalation_level,
+                null, // No old values for creation
+                $ici->only([
+                    'service_center', 'case_status', 'complaint_category',
+                    'agent_name', 'reason_of_escalation', 'escalation_level',
+                    'voice_of_customer', 'complaint_escalation_date'
+                ]),
+                null, // No changed fields for creation
+                'New ticket created for complaint number'
+            );
+
+            return redirect()->back()->with('success', 'Record saved successfully.');
+        }
     }
 
     // Show a specific ticket's details + feedback
     public function showTicket(string $ticket_no)
     {
-        $ici = InitialCustomerInformation::where('ticket_no', $ticket_no)->firstOrFail();
+        $ici = InitialCustomerInformation::with('happyCallStatus')->where('ticket_no', $ticket_no)->firstOrFail();
 
         $feedbacks = Feedback::where('ici_id', $ici->id)
             ->orderBy('created_at', 'asc')
             ->get();
 
         return view('agent', [
+            'ici'                 => $ici,
+            'feedbacks'           => $feedbacks,
+            'serviceCenters'      => ServiceCenter::orderBy('sc_name')->get(),
+            'complaintCategory'   => ComplaintCategory::orderBy('category_name')->get(),
+            'caseStatus'          => CaseStatus::orderBy('status')->get(),
+            'reasonofEscalation'  => EscalationReason::orderBy('reason')->get(),
+            'delayReason'         => DelayReason::orderBy('reason')->get(),
+        ]);
+    }
+
+    // Show a specific ticket's details + feedback for tracking
+    public function showTicketT(string $ticket_no)
+    {
+        $ici = InitialCustomerInformation::with('happyCallStatus')->where('ticket_no', $ticket_no)->firstOrFail();
+
+        $feedbacks = Feedback::where('ici_id', $ici->id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return view('t_agent', [
             'ici'                 => $ici,
             'feedbacks'           => $feedbacks,
             'serviceCenters'      => ServiceCenter::orderBy('sc_name')->get(),
@@ -185,6 +292,7 @@ class AgentController extends Controller
             if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
+                    'id'      => $feedback->id,
                     'message' => $feedback->message,
                     'role'    => $feedback->role,
                     'time'    => $feedback->created_at->format('d M Y, h:i A'),
@@ -264,7 +372,6 @@ class AgentController extends Controller
             return response()->json(['error' => 'Complaint number is required'], 400);
         }
 
-        \Log::info('AgentController fetchComsData called', ['user_role' => auth()->user()->role ?? 'none', 'complaint_no' => $complaintNo]);
 
         try {
             // Call external COMS API - try with query parameter as shown in Postman
@@ -366,6 +473,215 @@ class AgentController extends Controller
     }
 
     /**
+     * Check if complaint number exists and return ticket information
+     * This method is READ-ONLY and does NOT update database
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkComplaintTicket(Request $request)
+    {
+        try {
+            $complaintNumber = $request->input('complaint_number');
+
+            if (!$complaintNumber) {
+                return response()->json(['error' => 'Complaint number is required'], 400);
+            }
+
+            // Check if ticket exists for this complaint number
+            $existingTicket = InitialCustomerInformation::where('complaint_number', $complaintNumber)->first();
+
+            if ($existingTicket) {
+                // READ-ONLY: Just return current data, don't update escalation level
+                $currentEscalation = $existingTicket->escalation_level;
+                $nextEscalation = $this->getNextEscalationLevel($currentEscalation);
+
+                // Check if happy call exists for this ticket
+                $hasHappyCall = \DB::table('happy_call_status')
+                    ->where('ici_id', $existingTicket->id)
+                    ->exists();
+
+                return response()->json([
+                    'success' => true,
+                    'exists' => true,
+                    'ticket_no' => $existingTicket->ticket_no,
+                    'current_escalation' => $currentEscalation,
+                    'next_escalation' => $nextEscalation,
+                    'display_escalation' => $nextEscalation, // Show next level in form
+                    'escalation_updated' => false, // No update happens here anymore
+                    'ticket_data' => [
+                        'service_center' => $existingTicket->service_center,
+                        'case_status' => $existingTicket->case_status,
+                        'complaint_category' => $existingTicket->complaint_category,
+                        'agent_name' => $existingTicket->agent_name,
+                        'reason_of_escalation' => $existingTicket->reason_of_escalation,
+                        'escalation_level' => $currentEscalation, // Current database value (unchanged)
+                        'voice_of_customer' => $existingTicket->voice_of_customer,
+                        'complaint_escalation_date' => $existingTicket->complaint_escalation_date
+                            ? \Carbon\Carbon::parse($existingTicket->complaint_escalation_date)->format('Y-m-d')
+                            : '',
+                        'has_happy_call' => $hasHappyCall,
+                    ]
+                ]);
+            } else {
+                // No ticket exists for this complaint number, generate a new ticket number
+                $newTicketNumber = $this->generateTicketNumber();
+
+                return response()->json([
+                    'success' => true,
+                    'exists' => false,
+                    'ticket_no' => $newTicketNumber,
+                    'message' => 'New ticket generated for this complaint number.',
+                    'complaint_number' => $complaintNumber,
+                    'is_new_ticket' => true,
+                    'ticket_data' => [
+                        'escalation_level' => 'Low' // Default escalation level for new tickets
+                    ]
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error in checkComplaintTicket', [
+                'error' => $e->getMessage(),
+                'complaint_number' => $request->input('complaint_number'),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to check complaint ticket'
+            ], 500);
+        }
+    }
+
+    /**
+     * Fetch ticket information without updating escalation levels (for Case Tracking)
+     * This method is read-only and doesn't modify database
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function fetchTicketInfo(Request $request)
+    {
+        try {
+            $complaintNumber = $request->input('complaint_number');
+
+            if (!$complaintNumber) {
+                return response()->json(['error' => 'Complaint number is required'], 400);
+            }
+
+            // Check if ticket exists for this complaint number
+            $existingTicket = InitialCustomerInformation::where('complaint_number', $complaintNumber)->first();
+
+            if ($existingTicket) {
+                // Check if happy call exists for this ticket
+                $hasHappyCall = \DB::table('happy_call_status')
+                    ->where('ici_id', $existingTicket->id)
+                    ->exists();
+
+                return response()->json([
+                    'success' => true,
+                    'exists' => true,
+                    'ticket_no' => $existingTicket->ticket_no,
+                    'current_escalation' => $existingTicket->escalation_level,
+                    'ticket_data' => [
+                        'service_center' => $existingTicket->service_center,
+                        'case_status' => $existingTicket->case_status,
+                        'complaint_category' => $existingTicket->complaint_category,
+                        'agent_name' => $existingTicket->agent_name,
+                        'reason_of_escalation' => $existingTicket->reason_of_escalation,
+                        'escalation_level' => $existingTicket->escalation_level, // Actual database value
+                        'voice_of_customer' => $existingTicket->voice_of_customer,
+                        'complaint_escalation_date' => $existingTicket->complaint_escalation_date
+                            ? \Carbon\Carbon::parse($existingTicket->complaint_escalation_date)->format('Y-m-d')
+                            : '',
+                        'has_happy_call' => $hasHappyCall,
+                    ]
+                ]);
+            } else {
+                // No ticket exists for this complaint number
+                return response()->json([
+                    'success' => false,
+                    'exists' => false,
+                    'message' => 'No ticket found against the following complaint number.',
+                    'complaint_number' => $complaintNumber
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error in fetchTicketInfo', [
+                'error' => $e->getMessage(),
+                'complaint_number' => $request->input('complaint_number'),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to fetch ticket information'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get the next escalation level in sequence
+     *
+     * @param string $currentLevel
+     * @return string
+     */
+    private function getNextEscalationLevel($currentLevel)
+    {
+        switch ($currentLevel) {
+            case 'Low':
+                return 'Medium';
+            case 'Medium':
+                return 'High';
+            case 'High':
+            default:
+                return 'High'; // Stay at High for subsequent searches
+        }
+    }
+
+    /**
+     * Log activity for Initial Customer Information changes
+     *
+     * @param string $complaintNumber
+     * @param string $ticketNo
+     * @param string $action
+     * @param string $escalationLevel
+     * @param array|null $oldValues
+     * @param array|null $newValues
+     * @param array|null $changedFields
+     * @param string|null $notes
+     * @return void
+     */
+    private function logActivity($complaintNumber, $ticketNo, $action, $escalationLevel, $oldValues = null, $newValues = null, $changedFields = null, $notes = null)
+    {
+        try {
+            InitialCustomerInformationAuditLog::create([
+                'complaint_number' => $complaintNumber,
+                'ticket_no' => $ticketNo,
+                'action' => $action,
+                'escalation_level' => $escalationLevel,
+                'old_values' => $oldValues,
+                'new_values' => $newValues,
+                'changed_fields' => $changedFields,
+                'user_name' => auth()->user()->name,
+                'user_role' => auth()->user()->role,
+                'user_id' => auth()->id(),
+                'notes' => $notes,
+                'action_timestamp' => now(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to log activity', [
+                'error' => $e->getMessage(),
+                'complaint_number' => $complaintNumber,
+                'ticket_no' => $ticketNo,
+                'action' => $action,
+                'user_id' => auth()->id(),
+            ]);
+        }
+    }
+
+    /**
      * API endpoint to generate a new ticket number
      *
      * @param Request $request
@@ -415,44 +731,60 @@ class AgentController extends Controller
 
     /**
      * Save Happy Call Status with improved validation and error handling
+     * Also handles checking if Happy Call exists (when no form data provided)
      *
      * @param StoreHappyCallStatusRequest $request
      * @param string $ticket_no
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
-    public function saveHappyCallStatus(StoreHappyCallStatusRequest $request, string $ticket_no)
+    public function saveHappyCallStatus(Request $request, string $ticket_no)
     {
         try {
-            // Use database transaction for data consistency
-            return DB::transaction(function () use ($request, $ticket_no) {
-                // Find ticket with optimized query (select only needed columns)
-                $ticket = InitialCustomerInformation::select('id', 'ticket_no')
-                    ->where('ticket_no', $ticket_no)
-                    ->lockForUpdate() // Prevent race conditions
-                    ->first();
+            // Find ticket with optimized query (select only needed columns)
+            $ticket = InitialCustomerInformation::select('id', 'ticket_no')
+                ->where('ticket_no', $ticket_no)
+                ->first();
 
-                // Check if ticket exists
-                if (!$ticket) {
-                    Log::warning('Attempted to save Happy Call for non-existent ticket', [
-                        'ticket_no' => $ticket_no,
-                        'user_id' => auth()->id(),
-                        'ip' => request()->ip(),
-                    ]);
-                    return back()->withErrors(['error' => 'Ticket not found.']);
+            // Check if ticket exists
+            if (!$ticket) {
+                Log::warning('Attempted to save/check Happy Call for non-existent ticket', [
+                    'ticket_no' => $ticket_no,
+                    'user_id' => auth()->id(),
+                    'ip' => request()->ip(),
+                ]);
+
+                $error = 'Ticket not found.';
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'error' => $error], 404);
                 }
+                return back()->withErrors(['error' => $error]);
+            }
 
-                // Check for existing Happy Call with optimized query
-                $existingHappyCall = HappyCallStatus::select('id')
-                    ->where('ici_id', $ticket->id)
-                    ->exists();
+            // Check for existing Happy Call with optimized query
+            $existingHappyCall = HappyCallStatus::select('id')
+                ->where('ici_id', $ticket->id)
+                ->exists();
 
-                if ($existingHappyCall) {
-                    Log::info('Duplicate Happy Call attempt blocked', [
-                        'ticket_no' => $ticket_no,
-                        'user_id' => auth()->id(),
-                    ]);
-                    return back()->withErrors(['error' => 'Happy Call already exists for this ticket.']);
+            if ($existingHappyCall) {
+                Log::info('Happy Call already exists for this ticket', [
+                    'ticket_no' => $ticket_no,
+                    'user_id' => auth()->id(),
+                ]);
+
+                $error = 'Happy Call already exists for this ticket.';
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'error' => $error], 409);
                 }
+                return back()->withErrors(['error' => $error]);
+            }
+
+            // If we reach here and it's just a check (no form data), return success
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'No Happy Call exists, ready to create']);
+            }
+
+            // Use database transaction for data consistency (only for actual creation)
+            $result = DB::transaction(function () use ($request, $ticket_no) {
 
                 // Create Happy Call status with validated and sanitized data
                 $happyCallStatus = HappyCallStatus::create([
@@ -471,11 +803,25 @@ class AgentController extends Controller
                     'user_id' => auth()->id(),
                 ]);
 
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Happy Call submitted successfully!'
+                    ]);
+                }
+
                 return back()->with([
                     'success' => 'Happy Call status saved successfully!',
                     'ticket_no' => $ticket_no
                 ]);
             });
+
+            // Return the result if it's a JSON response
+            if ($result instanceof \Illuminate\Http\JsonResponse) {
+                return $result;
+            }
+
+            return $result;
 
         } catch (\Illuminate\Database\QueryException $e) {
             // Handle database-specific errors
@@ -485,8 +831,13 @@ class AgentController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
+            $error = 'A database error occurred. Please try again later.';
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'error' => $error], 500);
+            }
+
             return back()->withErrors([
-                'error' => 'A database error occurred. Please try again later.'
+                'error' => $error
             ]);
         } catch (\Exception $e) {
             // Handle general exceptions
@@ -497,8 +848,13 @@ class AgentController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
+            $error = 'An unexpected error occurred. Please contact support if the problem persists.';
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'error' => $error], 500);
+            }
+
             return back()->withErrors([
-                'error' => 'An unexpected error occurred. Please contact support if the problem persists.'
+                'error' => $error
             ]);
         }
     }

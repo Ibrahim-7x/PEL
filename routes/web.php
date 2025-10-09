@@ -17,6 +17,8 @@ use App\Http\Controllers\ProfileController;
 Auth::routes();
 
 Route::post('/fetch-coms-data', [App\Http\Controllers\AgentController::class, 'fetchComsData'])->middleware('auth')->name('fetch.coms');
+Route::post('/check-complaint-ticket', [App\Http\Controllers\AgentController::class, 'checkComplaintTicket'])->middleware('auth')->name('check.complaint.ticket');
+Route::post('/fetch-ticket-info', [App\Http\Controllers\AgentController::class, 'fetchTicketInfo'])->middleware('auth')->name('fetch.ticket.info');
 Route::get('/generate-ticket-number', [App\Http\Controllers\AgentController::class, 'getTicketNumber'])->middleware('auth')->name('generate.ticket.number');
 
 Route::get('/', function () {
@@ -31,7 +33,7 @@ Route::get('/profile', [ProfileController::class, 'index'])->middleware('auth')-
 Route::post('/profile/update-password', [ProfileController::class, 'updatePassword'])->middleware('auth')->name('profile.update-password');
 
 // Heartbeat route for session management (lightweight, no content)
-Route::get('/heartbeat', function() {
+Route::match(['get', 'post'], '/heartbeat', function() {
     return response()->noContent(); // 204 No Content response
 })->middleware('auth')->name('heartbeat');
 
@@ -41,6 +43,7 @@ Route::middleware(['auth', 'role:Agent'])->group(function () {
     Route::post('/home-agent', [AgentController::class, 'store'])->name('agent.store');
     Route::get('/t-agent', [AgentController::class, 'tIndex'])->name('t_agent.index');
     Route::get('/home-agent/ticket/{ticket_no}', [AgentController::class, 'showTicket'])->name('agent.ticket');
+    Route::get('/t-agent/ticket/{ticket_no}', [AgentController::class, 'showTicketT'])->name('t_agent.ticket');
     Route::post('/home-agent/ticket/{ticket_no}/feedback', [AgentController::class, 'storeFeedback'])->name('agent.feedback.store');
     Route::post('/home-agent/search-ticket', [AgentController::class, 'searchTicket'])->name('agent.ticket.search');
     Route::get('/home-agent/ticket/{ticket_no}/feedbacks', [AgentController::class, 'getFeedbacks'])->name('agent.feedback.list');

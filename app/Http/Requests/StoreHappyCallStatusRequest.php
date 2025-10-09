@@ -25,13 +25,11 @@ class StoreHappyCallStatusRequest extends FormRequest
             'resolved_date' => [
                 'required',
                 'date',
-                'before_or_equal:today',
                 'before_or_equal:happy_call_date',
             ],
             'happy_call_date' => [
                 'required',
                 'date',
-                'before_or_equal:today',
                 'after_or_equal:resolved_date',
             ],
             'customer_satisfied' => [
@@ -39,7 +37,7 @@ class StoreHappyCallStatusRequest extends FormRequest
                 Rule::in(['Yes', 'No']),
             ],
             'delay_reason' => [
-                'nullable',
+                'required',
                 'string',
                 'max:1000',
                 'regex:/^[^<>{}]*$/', // Prevent XSS by blocking HTML tags
@@ -72,6 +70,7 @@ class StoreHappyCallStatusRequest extends FormRequest
             'customer_satisfied.required' => 'Please specify if the customer is satisfied.',
             'customer_satisfied.in' => 'Customer satisfaction must be either Yes or No.',
 
+            'delay_reason.required' => 'Please select a reason for delay.',
             'delay_reason.string' => 'The delay reason must be a valid text.',
             'delay_reason.max' => 'The delay reason cannot exceed 1000 characters.',
             'delay_reason.regex' => 'The delay reason contains invalid characters.',

@@ -22,6 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'fetch-coms-data',
             'generate-ticket-number',
+            'check-complaint-ticket',
+            'home-agent/ticket/*/feedback',
+            'agent/feedback/store/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

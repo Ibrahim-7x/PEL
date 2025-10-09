@@ -4,7 +4,6 @@
 
 @section('meta')
     @vite('resources/css/agent.css')
-    <meta name="last-feedback-id" content="{{ (isset($ici) && $ici && isset($feedbacks) && $feedbacks->count() > 0) ? $feedbacks->last()->id : 0 }}">
 @endsection
 
 @section('content')
@@ -105,6 +104,12 @@
             </div>
 
             <hr class="my-4">
+
+            <!-- Ticket Status Information -->
+            <div id="ticketStatusInfo" class="alert alert-info" style="display: none;">
+                <div id="ticketStatusContent"></div>
+            </div>
+
             <!-- Initial Customer Information -->
             <form action="{{ route('agent.store') }}" method="POST" class="form-card p-4 shadow rounded">
                 @csrf
@@ -141,13 +146,25 @@
                         <input type="date" class="form-control" name="complaint_escalation_date"
                             id="complaint_escalation_date" value="{{ now()->format('Y-m-d') }}" readonly>
                     </div>
-                    <div class="col-md-3">
+                    {{-- <div class="col-md-3">
                         <label for="case_status" class="form-label fw-semibold">Case Status</label>
                         <select name="case_status" id="case_status" class="form-control" required>
                             <option value="">-- Select Case Status --</option>
                             @foreach ($caseStatus as $status)
                                 <option value="{{ $status->status }}" {{ $status->status == 'In-Progress' ? 'selected' : '' }}>{{ $status->status }}</option>
                             @endforeach
+                        </select>
+                    </div> --}}
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Escalation Level</label>
+                        <select name="case_status" id="case_status" class="form-select" required>
+                            <option value="">-- Select Case Status --</option>
+                            <option value="In Progress" selected>In Progress</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Hold PNA">Hold PNA</option>
+                            <option value="Sales Return">Sales Return</option>
+                            <option value="Pending from Customer">Pending from Customer</option>
+                            <option value="NHC">NHC</option>
                         </select>
                     </div>
 
@@ -193,7 +210,7 @@
                 </div>
 
                 <div class="mt-4 text-center">
-                    <button type="submit" class="btn btn-primary px-5">Submit</button>
+                    <button type="submit" class="btn btn-primary px-5" id="submitBtn">Submit</button>
                 </div>
             </form>
         </div>
@@ -254,56 +271,141 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                // Generate and populate ticket number first
-                fetch('{{ route("generate.ticket.number") }}', {
-                    method: 'GET',
+                // Check if complaint number exists and handle accordingly
+                fetch('{{ route("check.complaint.ticket") }}', {
+                    method: 'POST',
                     headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        complaint_number: complaintNumber
+                    })
                 })
                 .then(response => response.json())
                 .then(ticketData => {
                     if (ticketData.success) {
-                        // Set the generated ticket number
+                        // Set the ticket number (existing or new)
                         const ticketInput = document.querySelector('input[name="ticket_no"]');
-                        ticketInput.value = ticketData.ticket_number;
-
-                        // Show success message for ticket generation
+                        ticketInput.value = ticketData.ticket_no;
                         ticketInput.style.borderColor = '#28a745';
-                        ticketInput.title = 'Auto-generated ticket number';
+                        ticketInput.title = ticketData.exists ? 'Existing ticket number' : (ticketData.is_new_ticket ? 'Auto-generated ticket number' : 'Ticket number');
+
+                        // Update submit button text based on scenario
+                        const submitBtn = document.getElementById('submitBtn');
+                        if (ticketData.exists) {
+                            submitBtn.textContent = 'Update Ticket';
+                            submitBtn.className = 'btn btn-warning px-5';
+                        } else if (ticketData.is_new_ticket) {
+                            submitBtn.textContent = 'Create Ticket';
+                            submitBtn.className = 'btn btn-primary px-5';
+                        }
+
+                        // Set the escalation level (only for existing tickets) - show next level visually
+                        if (ticketData.exists && ticketData.ticket_data) {
+                            const escalationSelect = document.querySelector('select[name="escalation_level"]');
+                            if (escalationSelect) {
+                                // Show the next escalation level in the form (visual)
+                                escalationSelect.value = ticketData.next_escalation;
+
+                                // Add visual indicator for escalation level progression
+                                escalationSelect.style.borderColor = '#ffc107';
+                                escalationSelect.title = 'Current: ' + ticketData.current_escalation + ' → Will update to: ' + ticketData.next_escalation + ' (on form submission)';
+                            }
+                        }
+
+                        // Show status information
+                        const statusInfo = document.getElementById('ticketStatusInfo');
+                        const statusContent = document.getElementById('ticketStatusContent');
+
+                        if (ticketData.exists) {
+                            // Existing ticket - show information with escalation progression
+                            statusInfo.className = 'alert alert-info';
+                            statusContent.innerHTML = `
+                                <strong>📋 Existing Ticket Found</strong><br>
+                                <small>Ticket <strong>${ticketData.ticket_no}</strong> found for this complaint number.</small><br>
+                                <small>Current: <strong>${ticketData.current_escalation}</strong> → Will update to: <strong>${ticketData.next_escalation}</strong></small><br>
+                                <small class="text-warning">💡 Database will be updated when you submit the form</small>
+                            `;
+                            statusInfo.style.display = 'block';
+
+                            console.log('Loading existing ticket data:', ticketData.ticket_data);
+
+                            // Populate form fields with existing data (only for existing tickets)
+                            if (ticketData.ticket_data) {
+                                if (ticketData.ticket_data.service_center) {
+                                    document.getElementById('service_center').value = ticketData.ticket_data.service_center;
+                                }
+                                if (ticketData.ticket_data.case_status) {
+                                    document.getElementById('case_status').value = ticketData.ticket_data.case_status;
+                                }
+                                if (ticketData.ticket_data.complaint_category) {
+                                    document.getElementById('complaint_category').value = ticketData.ticket_data.complaint_category;
+                                }
+                                if (ticketData.ticket_data.agent_name) {
+                                    document.getElementById('agent_name').value = ticketData.ticket_data.agent_name;
+                                }
+                                if (ticketData.ticket_data.reason_of_escalation) {
+                                    document.getElementById('reason_of_escalation').value = ticketData.ticket_data.reason_of_escalation;
+                                }
+                                if (ticketData.ticket_data.voice_of_customer) {
+                                    document.querySelector('textarea[name="voice_of_customer"]').value = ticketData.ticket_data.voice_of_customer;
+                                }
+
+                                // Update escalation level dropdown to show next level visually
+                                const escalationSelect = document.querySelector('select[name="escalation_level"]');
+                                if (escalationSelect) {
+                                    escalationSelect.value = ticketData.next_escalation;
+                                    escalationSelect.style.borderColor = '#ffc107';
+                                    escalationSelect.title = `Current: ${ticketData.current_escalation} → Will update to: ${ticketData.next_escalation} (on form submission)`;
+                                }
+                            }
+
+                            console.log('Ticket exists, escalation level:', ticketData.current_escalation);
+                        } else if (ticketData.is_new_ticket) {
+                            // New ticket - show creation information
+                            statusInfo.className = 'alert alert-success';
+                            statusContent.innerHTML = `
+                                <strong>✅ New Ticket Generated</strong><br>
+                                <small>Ticket <strong>${ticketData.ticket_no}</strong> generated successfully for this complaint.</small><br>
+                                <small>Ready for form submission.</small>
+                            `;
+                            statusInfo.style.display = 'block';
+
+                            console.log('New ticket generated:', ticketData.ticket_no);
+                        } else {
+                            // Handle actual errors
+                            console.error('Failed to check/process ticket:', ticketData.error || ticketData.message);
+                            alert('Error: ' + (ticketData.error || ticketData.message));
+                            return;
+                        }
 
                         // Set focus to service center field
                         setTimeout(() => {
                             document.getElementById('service_center').focus();
                         }, 100);
                     } else {
-                        console.error('Failed to generate ticket number:', ticketData.error);
-                        // Keep the field empty for manual entry as fallback
-                        const ticketInput = document.querySelector('input[name="ticket_no"]');
-                        ticketInput.readOnly = false;
-                        ticketInput.placeholder = 'Enter ticket number manually';
-                        ticketInput.style.borderColor = '#ffc107';
+                        console.error('Failed to check/process ticket:', ticketData.error);
+                        alert('Error: ' + ticketData.error);
                     }
                 })
                 .catch(error => {
-                    console.error('Error generating ticket number:', error);
-                    // Fallback: allow manual entry
-                    const ticketInput = document.querySelector('input[name="ticket_no"]');
-                    ticketInput.readOnly = false;
-                    ticketInput.placeholder = 'Enter ticket number manually';
-                    ticketInput.style.borderColor = '#ffc107';
+                    console.error('Error checking complaint ticket:', error);
+                    alert('Failed to process complaint ticket. Please try again.');
                 });
 
                 // Store complaint number for form submission
                 window.complaintNumber = complaintNumber;
                 console.log('Complaint number stored in window:', complaintNumber);
 
-                // Immediately set the hidden field value
+                // Immediately set the hidden field value (for both new and existing tickets)
                 const complaintNumberHidden = document.getElementById('complaint_number_hidden');
                 if (complaintNumberHidden) {
                     complaintNumberHidden.value = complaintNumber;
                     console.log('Hidden field set immediately:', complaintNumberHidden.value);
+                } else {
+                    console.error('Hidden field not found!');
                 }
 
                 // Populate form fields with the fetched data
@@ -331,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Verify and log form submission data
+    // Handle form submission and reset for next use
     const form = document.querySelector('form[action*="agent.store"]');
     if (form) {
         form.addEventListener('submit', function(e) {
@@ -339,16 +441,81 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Form submission - Complaint number data:', {
                 hiddenFieldValue: complaintNumberHidden ? complaintNumberHidden.value : 'No hidden field',
                 windowComplaintNumber: window.complaintNumber,
-                formAction: form.action
+                formAction: form.action,
+                allFormData: new FormData(form)
             });
 
             // Final verification before submission
             if (complaintNumberHidden && window.complaintNumber) {
                 complaintNumberHidden.value = window.complaintNumber;
                 console.log('Final hidden field value set to:', complaintNumberHidden.value);
+            } else {
+                console.error('CRITICAL: Hidden field or complaint number missing!', {
+                    hasHiddenField: !!complaintNumberHidden,
+                    hasComplaintNumber: !!window.complaintNumber,
+                    hiddenFieldValue: complaintNumberHidden ? complaintNumberHidden.value : 'undefined'
+                });
+            }
+
+            // Show loading state on submit button
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+                submitBtn.disabled = true;
             }
         });
     }
+
+    // Reset form after successful page reload (for new complaint entry)
+    @if(session('success'))
+        // Reset form for next complaint entry
+        setTimeout(() => {
+            // Clear COMS form fields
+            document.getElementById('complaint_number').value = '';
+            document.getElementById('job_number').value = '';
+            document.getElementById('coms_complaint_date').value = '';
+            document.getElementById('job_type').value = '';
+            document.getElementById('customer_name').value = '';
+            document.getElementById('contact_no').value = '';
+            document.getElementById('technician_name').value = '';
+            document.getElementById('purchase_date').value = '';
+            document.getElementById('product').value = '';
+            document.getElementById('job_status').value = '';
+            document.getElementById('problem').value = '';
+            document.getElementById('workdone').value = '';
+
+            // Clear ticket number and reset to readonly
+            const ticketInput = document.querySelector('input[name="ticket_no"]');
+            if (ticketInput) {
+                ticketInput.value = '';
+                ticketInput.readOnly = true;
+                ticketInput.placeholder = 'Will be auto-generated when complaint is searched';
+                ticketInput.style.borderColor = '';
+            }
+
+            // Reset escalation level to Low
+            document.querySelector('select[name="escalation_level"]').value = 'Low';
+
+            // Reset submit button
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.textContent = 'Submit';
+                submitBtn.className = 'btn btn-primary px-5';
+                submitBtn.disabled = false;
+            }
+
+            // Hide status info
+            const statusInfo = document.getElementById('ticketStatusInfo');
+            if (statusInfo) {
+                statusInfo.style.display = 'none';
+            }
+
+            // Clear stored complaint number
+            window.complaintNumber = null;
+
+            console.log('Form reset for next complaint entry');
+        }, 1000);
+    @endif
 });
 </script>
 @endsection

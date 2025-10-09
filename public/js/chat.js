@@ -1,51 +1,5 @@
-// Counter for fetchNewFeedbacks calls
-window.fetchNewFeedbacksCount = window.fetchNewFeedbacksCount || 0;
-
 window.lastFeedbackId = parseInt(document.querySelector('meta[name="last-feedback-id"]')?.content || '0', 10);
 let isPolling = false;
-
-function fetchNewFeedbacks() {
-    window.fetchNewFeedbacksCount++;
-    
-    if (!window.feedbackListUrl) {
-        console.error('feedbackListUrl is not set');
-        return;
-    }
-    
-    console.log('Fetching new feedbacks from:', window.feedbackListUrl, 'Call count:', window.fetchNewFeedbacksCount);
-    
-    fetch(window.feedbackListUrl)
-        .then(response => response.json())
-        .then(data => {
-            console.log('Received feedback data:', data);
-            
-            const chatBox = document.getElementById('chatScrollArea');
-
-            data.forEach(fb => {
-                if (fb.id > window.lastFeedbackId) {
-                    const isMe = fb.name === window.currentUser;
-
-                    const bubble = document.createElement('div');
-                    bubble.classList.add('d-flex', isMe ? 'justify-content-end' :
-                        'justify-content-start', 'mb-3');
-
-                    bubble.innerHTML = `
-                                            <div class="p-2 rounded-3" style="max-width: 70%; background-color: ${isMe ? '#d1e7dd' : '#e2e3e5'};">
-                                                <div class="fw-semibold mb-1">
-                                                    ${isMe ? 'You' : fb.name} <span class="text-muted">(${fb.role})</span>
-                                                </div>
-                                                <div>${fb.message}</div>
-                                                <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
-                                            </div>
-                                        `;
-                    chatBox.appendChild(bubble);
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                    window.lastFeedbackId = fb.id;
-                }
-            });
-        })
-        .catch(err => console.error('Error fetching feedbacks:', err));
-}
 
 function pollNewMessages() {
     if (isPolling) return;
@@ -73,7 +27,7 @@ function pollNewMessages() {
                 }
             }
         })
-        .catch(error => console.error('Error polling messages:', error))
+        .catch(error => {})
         .finally(() => {
             isPolling = false;
             window.feedbackPollTimeoutId = setTimeout(pollNewMessages, 36000); // Poll every 5 seconds
@@ -123,7 +77,6 @@ function scrollToBottom() {
 function reconfigureChatFromDOM() {
     const cfg = document.getElementById('chatConfig');
     if (!cfg) {
-        console.log('chatConfig not found; skipping reconfigure');
         return false;
     }
     window.feedbackListUrl = cfg.dataset.feedbackListUrl || window.feedbackListUrl;
@@ -133,32 +86,22 @@ function reconfigureChatFromDOM() {
     if (!Number.isNaN(id)) {
         window.lastFeedbackId = id;
     }
-    console.log('Reconfigured chat from DOM:', {
-        feedbackListUrl: window.feedbackListUrl,
-        currentUser: window.currentUser,
-        agentIndexUrl: window.agentIndexUrl,
-        lastFeedbackId: window.lastFeedbackId
-    });
     return true;
 }
 
 // Start or restart polling interval safely
 function startFeedbackPolling() {
     if (!window.feedbackListUrl) {
-        console.warn('Cannot start polling: feedbackListUrl is not set');
         return;
     }
     if (window.feedbackInterval) {
-        console.log('Clearing existing feedback interval');
         clearInterval(window.feedbackInterval);
         window.feedbackInterval = null;
     }
     if (window.feedbackPollTimeoutId) {
-        console.log('Clearing existing feedback poll timeout');
         clearTimeout(window.feedbackPollTimeoutId);
         window.feedbackPollTimeoutId = null;
     }
-    console.log('Starting feedback polling');
     pollNewMessages();
     scrollToBottom();
 }
@@ -170,23 +113,36 @@ if (!window.feedbackListUrl) {
 if (window.feedbackListUrl) {
     startFeedbackPolling();
 }
-// Track if event listener is already attached
-if (!window.chatFormListenerAttached) {
-    console.log('Attaching chat form listener');
-    
-    document.addEventListener('submit', function (e) {
-        if (e.target && e.target.id === 'chatForm') {
-            e.preventDefault();
+function attachChatFormListener() {
+    const chatForm = document.getElementById('chatForm');
+    if (chatForm && !window.chatFormListenerAttached) {
 
-            const form = e.target;
+        chatForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (window.isSubmittingChat) {
+                return;
+            }
+
+            window.isSubmittingChat = true;
+
+            const form = this;
+            const submitBtn = form.querySelector('button');
+            const chatInput = document.getElementById('chatMessage');
+
             const formData = new FormData(form);
+
+            // Disable input and button to prevent multiple submissions
+            submitBtn.disabled = true;
+            chatInput.disabled = true;
 
             fetch(form.action, {
                 method: 'POST',
                 body: formData,
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 }
             })
                 .then(res => res.json())
@@ -206,18 +162,31 @@ if (!window.chatFormListenerAttached) {
                         chatBox.appendChild(bubble);
                         chatBox.scrollTop = chatBox.scrollHeight; // auto-scroll
 
+                        // Update lastFeedbackId to prevent duplicate from polling
+                        if (data.id) {
+                            window.lastFeedbackId = data.id;
+                        }
+
                         // Reset input
                         document.getElementById('chatMessage').value = '';
                     } else if (data.error) {
                         alert(data.error);
                     }
                 })
-                .catch(err => console.error(err));
-        }
-    });
-    
-    window.chatFormListenerAttached = true;
+                .catch(err => console.error(err))
+                .finally(() => {
+                    window.isSubmittingChat = false;
+                    submitBtn.disabled = false;
+                    chatInput.disabled = false;
+                });
+        });
+
+        window.chatFormListenerAttached = true;
+    }
 }
+
+// Attach on load
+attachChatFormListener();
 // Get lastFeedbackId from meta tag, default to 0 if not present
 const lastFeedbackIdMeta = document.querySelector('meta[name="last-feedback-id"]');
 
@@ -225,32 +194,30 @@ const lastFeedbackIdMeta = document.querySelector('meta[name="last-feedback-id"]
 // Auto-scroll on load
 function goBackToSearch() {
     if (!window.agentIndexUrl) {
-        console.error('agentIndexUrl is not set');
         return;
     }
-    
-    console.log('Going back to search, agentIndexUrl:', window.agentIndexUrl);
     
     fetch(window.agentIndexUrl, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
         .then(response => response.text())
         .then(html => {
-            console.log('Received go back to search response');
             
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             const newContent = doc.querySelector('#chatArea');
             document.getElementById('chatArea').innerHTML = newContent.innerHTML;
-            
+
+            // Re-attach chat form listener to the new form
+            window.chatFormListenerAttached = false;
+            attachChatFormListener();
+
             // Clear timers when going back to search
             if (window.feedbackInterval) {
-                console.log('Clearing feedback interval in goBackToSearch');
                 clearInterval(window.feedbackInterval);
                 window.feedbackInterval = null;
             }
             if (window.feedbackPollTimeoutId) {
-                console.log('Clearing feedback poll timeout in goBackToSearch');
                 clearTimeout(window.feedbackPollTimeoutId);
                 window.feedbackPollTimeoutId = null;
             }
@@ -261,13 +228,11 @@ function goBackToSearch() {
 }
 // Track if event listener is already attached
 if (!window.ticketSearchFormListenerAttached) {
-    console.log('Attaching ticket search form listener');
     
     document.addEventListener('submit', function (e) {
         if (e.target && e.target.id === 'ticketSearchForm') {
             e.preventDefault(); // stop full reload
             
-            console.log('Ticket search form submitted');
 
             const form = e.target;
             const formData = new FormData(form);
@@ -276,14 +241,13 @@ if (!window.ticketSearchFormListenerAttached) {
                 alert('Please enter Ticket No');
                 return;
             }
-            const url = `/home-agent/ticket/${encodeURIComponent(rawTicketNo)}`;
+            const url = `/t-agent/ticket/${encodeURIComponent(rawTicketNo)}`;
 
             fetch(url, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
                 .then(response => response.text())
                 .then(html => {
-                    console.log('Received ticket search response');
 
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
@@ -293,6 +257,10 @@ if (!window.ticketSearchFormListenerAttached) {
                     // Reconfigure and restart polling for the newly loaded ticket
                     reconfigureChatFromDOM();
                     startFeedbackPolling();
+
+                    // Re-attach chat form listener to the new form
+                    window.chatFormListenerAttached = false;
+                    attachChatFormListener();
 
                     // Ensure URL is reset so page reload doesn't auto-open last ticket
                     if (window.location.pathname !== '/home-agent') {
