@@ -293,6 +293,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             submitBtn.className = 'btn btn-primary px-5';
                         }
 
+                        // Store next escalation for later use
+                        let nextEscalation = ticketData.next_escalation;
+
                         // Set the escalation level (only for existing tickets) - show next level visually
                         if (ticketData.exists && ticketData.ticket_data) {
                             const escalationSelect = document.querySelector('select[name="escalation_level"]');
@@ -344,13 +347,23 @@ document.addEventListener('DOMContentLoaded', function() {
                                     document.querySelector('textarea[name="voice_of_customer"]').value = ticketData.ticket_data.voice_of_customer;
                                 }
 
-                                // Update escalation level dropdown to show next level visually
+                                // Set escalation level to current database value (not next level)
                                 const escalationSelect = document.querySelector('select[name="escalation_level"]');
-                                if (escalationSelect) {
-                                    escalationSelect.value = ticketData.next_escalation;
-                                    escalationSelect.style.borderColor = '#ffc107';
-                                    escalationSelect.title = `Current: ${ticketData.current_escalation} → Will update to: ${ticketData.next_escalation} (on form submission)`;
+                                if (escalationSelect && ticketData.ticket_data.escalation_level) {
+                                    escalationSelect.value = ticketData.ticket_data.escalation_level;
+                                    escalationSelect.style.borderColor = '';
+                                    escalationSelect.title = `Current escalation level: ${ticketData.ticket_data.escalation_level}`;
                                 }
+                            }
+
+                            // Disable non-editable fields for existing tickets
+                            document.getElementById('service_center').disabled = true;
+                            document.getElementById('complaint_category').disabled = true;
+                            document.getElementById('reason_of_escalation').disabled = true;
+                            // agent_name is already readonly for agents, but ensure it's disabled if not
+                            const agentNameInput = document.getElementById('agent_name');
+                            if (agentNameInput) {
+                                agentNameInput.disabled = true;
                             }
 
                             console.log('Ticket exists, escalation level:', ticketData.current_escalation);
@@ -372,9 +385,33 @@ document.addEventListener('DOMContentLoaded', function() {
                             return;
                         }
 
-                        // Set focus to service center field
+                        // Add event listener for case status change to update escalation level
+                        const caseStatusSelect = document.getElementById('case_status');
+                        const escalationSelect = document.querySelector('select[name="escalation_level"]');
+                        if (caseStatusSelect && escalationSelect) {
+                            caseStatusSelect.addEventListener('change', function() {
+                                if (this.value === 'In Progress' && nextEscalation) {
+                                    escalationSelect.value = nextEscalation;
+                                    escalationSelect.style.borderColor = '#ffc107';
+                                    escalationSelect.title = `Updated to: ${nextEscalation} (due to In Progress status)`;
+                                } else {
+                                    // For all other case statuses, reset escalation level to current database value
+                                    if (ticketData.exists && ticketData.ticket_data && ticketData.ticket_data.escalation_level) {
+                                        escalationSelect.value = ticketData.ticket_data.escalation_level;
+                                        escalationSelect.style.borderColor = '';
+                                        escalationSelect.title = `Current escalation level: ${ticketData.ticket_data.escalation_level}`;
+                                    }
+                                }
+                            });
+                        }
+
+                        // Set focus to service center field (or case_status for existing)
                         setTimeout(() => {
-                            document.getElementById('service_center').focus();
+                            if (ticketData.exists) {
+                                document.getElementById('case_status').focus();
+                            } else {
+                                document.getElementById('service_center').focus();
+                            }
                         }, 100);
                     } else {
                         console.error('Failed to check/process ticket:', ticketData.error);
@@ -447,6 +484,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     hiddenFieldValue: complaintNumberHidden ? complaintNumberHidden.value : 'undefined'
                 });
             }
+
+            // Re-enable disabled fields for form submission (so they get included in POST data)
+            const disabledFields = ['service_center', 'complaint_category', 'reason_of_escalation', 'agent_name'];
+            disabledFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && field.disabled) {
+                    field.disabled = false;
+                }
+            });
 
             // Show loading state on submit button
             const submitBtn = document.getElementById('submitBtn');

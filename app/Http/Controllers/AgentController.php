@@ -122,48 +122,45 @@ class AgentController extends Controller
         ];
 
         if ($existingTicket) {
-            // Update existing ticket
+            // Update existing ticket - only validate editable fields
             $request->validate([
                 'ticket_no' => 'required',
                 'complaint_number_hidden' => 'required',
-                'service_center' => 'required',
-                'complaint_escalation_date' => 'required|date',
                 'case_status' => 'required',
-                'complaint_category' => 'required',
-                'agent_name' => 'required',
-                'reason_of_escalation' => 'required',
                 'escalation_level' => 'required',
                 'voice_of_customer' => 'required'
             ]);
 
-            // Check if escalation level should be auto-updated
-            $currentEscalation = $existingTicket->escalation_level;
-            $requestedEscalation = $request->escalation_level;
-            $nextEscalation = $this->getNextEscalationLevel($currentEscalation);
+            // For existing tickets, only update the editable fields
+            $updateData = [
+                'case_status' => $request->case_status,
+                'voice_of_customer' => $request->voice_of_customer,
+            ];
 
-            // Auto-update escalation level if user selected current level (not manually changed)
-            if ($requestedEscalation === $currentEscalation && $currentEscalation !== 'High') {
-                $iciData['escalation_level'] = $nextEscalation;
+            // Auto-update escalation level only if case status is "In Progress"
+            $currentEscalation = $existingTicket->escalation_level;
+            if ($request->case_status === 'In Progress') {
+                $nextEscalation = $this->getNextEscalationLevel($currentEscalation);
+                $updateData['escalation_level'] = $nextEscalation;
                 $escalationWasUpdated = true;
                 $oldEscalationLevel = $currentEscalation;
             } else {
+                // For all other case statuses, escalation level remains unchanged
                 $escalationWasUpdated = false;
                 $oldEscalationLevel = $currentEscalation;
             }
 
-            $existingTicket->update($iciData);
+            $existingTicket->update($updateData);
 
             // Get old values for logging (before update)
             $oldValues = $existingTicket->getOriginal();
 
-            // Get new values for logging
+            // Get new values for logging (only include fields that were actually updated)
             $newValues = $existingTicket->fresh()->only([
-                'service_center', 'case_status', 'complaint_category',
-                'agent_name', 'reason_of_escalation', 'escalation_level',
-                'voice_of_customer', 'complaint_escalation_date'
+                'case_status', 'escalation_level', 'voice_of_customer'
             ]);
 
-            // Determine changed fields
+            // Determine changed fields (only check the fields that were updated)
             $changedFields = [];
             foreach ($oldValues as $field => $oldValue) {
                 if (isset($newValues[$field]) && $oldValue != $newValues[$field]) {
