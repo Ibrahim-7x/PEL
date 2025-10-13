@@ -104,46 +104,45 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Ticket No</label>
-                        <input type="text" name="ticket_no" id="ticket_no" class="form-control" readonly value="{{ $ici->ticket_no ?? '' }}" placeholder="Auto-generated when complaint is searched">
-                        <small class="text-muted">Auto-generated when complaint is searched</small>
+                        <input type="text" name="ticket_no" id="ticket_no" class="form-control" readonly value="{{ $ici->ticket_no ?? '' }}">
                     </div>
 
                     <div class="col-md-6">
                         <label for="service_center" class="form-label fw-semibold">Service Center</label>
-                        <input name="service_center" id="service_center" class="form-control" readonly value="{{ $ici->service_center ?? '' }}" placeholder="Populated when complaint is searched">
+                        <input name="service_center" id="service_center" class="form-control" readonly value="{{ $ici->service_center ?? '' }}">
                     </div>
                     <div class="col-md-6">
                         <label for="complaint_escalation_date" class="form-label fw-semibold">Complaint Escalation Date</label>
                         <input type="date" class="form-control" name="complaint_escalation_date"
-                            id="complaint_escalation_date" readonly value="{{ $ici ? \Carbon\Carbon::parse($ici->complaint_escalation_date)->format('Y-m-d') : '' }}" placeholder="Auto-filled">
+                            id="complaint_escalation_date" readonly value="{{ $ici ? \Carbon\Carbon::parse($ici->complaint_escalation_date)->format('Y-m-d') : '' }}">
                     </div>
                     <div class="col-md-3">
                         <label for="case_status" class="form-label fw-semibold">Case Status</label>
-                        <input name="case_status" id="case_status" class="form-control" readonly value="{{ $ici->case_status ?? '' }}" placeholder="Auto-filled">
+                        <input name="case_status" id="case_status" class="form-control" readonly value="{{ $ici->case_status ?? '' }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Aging</label>
-                        <input type="number" name="aging" id="aging" class="form-control" readonly value="" placeholder="Auto-calculated">
+                        <input type="number" name="aging" id="aging" class="form-control" readonly value="">
                     </div>
                     <div class="col-md-6">
                         <label for="complaint_category" class="form-label fw-semibold">Complaint Category</label>
-                        <input name="complaint_category" id="complaint_category" class="form-control" readonly value="{{ $ici->complaint_category ?? '' }}" placeholder="Auto-filled">
+                        <input name="complaint_category" id="complaint_category" class="form-control" readonly value="{{ $ici->complaint_category ?? '' }}">
                     </div>
                     <div class="col-md-6">
                         <label for="agent_name" class="form-label fw-semibold">Agent Name</label>
-                        <input type="text" class="form-control" name="agent_name" id="agent_name" readonly value="{{ $ici->agent_name ?? '' }}" placeholder="Auto-filled">
+                        <input type="text" class="form-control" name="agent_name" id="agent_name" readonly value="{{ $ici->agent_name ?? '' }}">
                     </div>
                     <div class="col-md-6">
                         <label for="reason_of_escalation" class="form-label fw-semibold">Reason of Escalation</label>
-                        <input name="reason_of_escalation" id="reason_of_escalation" class="form-control" readonly value="{{ $ici->reason_of_escalation ?? '' }}" placeholder="Auto-filled">
+                        <input name="reason_of_escalation" id="reason_of_escalation" class="form-control" readonly value="{{ $ici->reason_of_escalation ?? '' }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Escalation Level</label>
-                        <input name="escalation_level" id="escalation_level" class="form-control" readonly value="{{ $ici->escalation_level ?? '' }}" placeholder="Auto-filled">
+                        <input name="escalation_level" id="escalation_level" class="form-control" readonly value="{{ $ici->escalation_level ?? '' }}">
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Voice of Customer</label>
-                        <textarea name="voice_of_customer" id="voice_of_customer" rows="3" class="form-control" readonly placeholder="Auto-filled">{{ $ici->voice_of_customer ?? '' }}</textarea>
+                        <textarea name="voice_of_customer" id="voice_of_customer" rows="3" class="form-control" readonly>{{ $ici->voice_of_customer ?? '' }}</textarea>
                     </div>
                 </div>
 
