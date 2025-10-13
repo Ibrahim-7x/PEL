@@ -324,8 +324,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             `;
                             statusInfo.style.display = 'block';
 
-                            console.log('Loading existing ticket data:', ticketData.ticket_data);
-
                             // Populate form fields with existing data (only for existing tickets)
                             if (ticketData.ticket_data) {
                                 if (ticketData.ticket_data.service_center) {
@@ -366,7 +364,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 agentNameInput.disabled = true;
                             }
 
-                            console.log('Ticket exists, escalation level:', ticketData.current_escalation);
                         } else if (ticketData.is_new_ticket) {
                             // New ticket - show creation information
                             statusInfo.className = 'alert alert-success';
@@ -377,10 +374,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             `;
                             statusInfo.style.display = 'block';
 
-                            console.log('New ticket generated:', ticketData.ticket_no);
                         } else {
                             // Handle actual errors
-                            console.error('Failed to check/process ticket:', ticketData.error || ticketData.message);
                             alert('Error: ' + (ticketData.error || ticketData.message));
                             return;
                         }
@@ -414,26 +409,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }, 100);
                     } else {
-                        console.error('Failed to check/process ticket:', ticketData.error);
                         alert('Error: ' + ticketData.error);
                     }
                 })
                 .catch(error => {
-                    console.error('Error checking complaint ticket:', error);
                     alert('Failed to process complaint ticket. Please try again.');
                 });
 
                 // Store complaint number for form submission
                 window.complaintNumber = complaintNumber;
-                console.log('Complaint number stored in window:', complaintNumber);
 
                 // Immediately set the hidden field value (for both new and existing tickets)
                 const complaintNumberHidden = document.getElementById('complaint_number_hidden');
                 if (complaintNumberHidden) {
                     complaintNumberHidden.value = complaintNumber;
-                    console.log('Hidden field set immediately:', complaintNumberHidden.value);
-                } else {
-                    console.error('Hidden field not found!');
                 }
 
                 // Populate form fields with the fetched data
@@ -455,7 +444,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 searchComplaintBtn.innerHTML = '<i class="bi bi-search"></i>';
                 searchComplaintBtn.disabled = false;
 
-                console.error('Error fetching COMS data:', error);
                 alert('Failed to fetch COMS data. Please check the complaint number and try again.');
             });
         });
@@ -466,23 +454,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', function(e) {
             const complaintNumberHidden = document.getElementById('complaint_number_hidden');
-            console.log('Form submission - Complaint number data:', {
-                hiddenFieldValue: complaintNumberHidden ? complaintNumberHidden.value : 'No hidden field',
-                windowComplaintNumber: window.complaintNumber,
-                formAction: form.action,
-                allFormData: new FormData(form)
-            });
 
             // Final verification before submission
             if (complaintNumberHidden && window.complaintNumber) {
                 complaintNumberHidden.value = window.complaintNumber;
-                console.log('Final hidden field value set to:', complaintNumberHidden.value);
-            } else {
-                console.error('CRITICAL: Hidden field or complaint number missing!', {
-                    hasHiddenField: !!complaintNumberHidden,
-                    hasComplaintNumber: !!window.complaintNumber,
-                    hiddenFieldValue: complaintNumberHidden ? complaintNumberHidden.value : 'undefined'
-                });
             }
 
             // Re-enable disabled fields for form submission (so they get included in POST data)
@@ -550,7 +525,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear stored complaint number
             window.complaintNumber = null;
 
-            console.log('Form reset for next complaint entry');
         }, 1000);
     @endif
 });

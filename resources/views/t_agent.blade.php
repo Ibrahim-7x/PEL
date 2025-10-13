@@ -285,14 +285,11 @@
                             const diffTime = Math.abs(today - complaintDateObj);
                             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                             document.getElementById('aging').value = diffDays;
-                            console.log('Aging calculated:', diffDays, 'days from', complaintDate, 'Date object:', complaintDateObj);
                         } catch (error) {
-                            console.error('Error calculating aging:', error, 'Input date:', complaintDate);
                             document.getElementById('aging').value = '';
                         }
                     } else {
                         document.getElementById('aging').value = '';
-                        console.log('No complaint date provided for aging calculation');
                     }
                 }
 
@@ -300,7 +297,6 @@
                 document.addEventListener('DOMContentLoaded', function() {
                     @if($ici && $ici->complaint_escalation_date)
                         updateAging('{{ $ici->complaint_escalation_date }}');
-                        console.log('Initial aging calculation for existing ICI data');
                     @endif
 
                     // Check for existing Happy Call on page load
@@ -314,7 +310,6 @@
 
                 // Function to check Happy Call status for a ticket
                 function checkHappyCallStatus(ticketNo) {
-                    console.log('🔍 Checking Happy Call status for ticket:', ticketNo);
 
                     // Create a minimal request to check if Happy Call exists (no form data)
                     const emptyFormData = new FormData();
@@ -328,40 +323,30 @@
                         }
                     })
                     .then(response => {
-                        console.log('📡 Happy Call check response status:', response.status);
-                        console.log('📡 Response text:', response.statusText);
                         return response.text().then(text => {
-                            console.log('📄 Raw response:', text);
                             try {
                                 return JSON.parse(text);
                             } catch (e) {
-                                console.error('❌ Failed to parse JSON:', e);
                                 throw new Error('Invalid JSON response');
                             }
                         });
                     })
                     .then(data => {
-                        console.log('📋 Parsed response data:', data);
-
                         if (data.success === false && data.error === 'Happy Call already exists for this ticket.') {
                             // 409 means Happy Call already exists - show banner, hide form
-                            console.log('✅ Happy Call already exists for ticket:', ticketNo);
                             showHappyCallBanner();
                             hideHappyCallForm();
                             return { exists: true };
                         } else if (data.success === true) {
                             // 200 means no Happy Call exists - show form, hide banner
-                            console.log('❌ No Happy Call found for ticket:', ticketNo);
                             showHappyCallForm(ticketNo);
                             hideHappyCallBanner();
                             return { exists: false };
                         } else {
-                            console.error('❌ Unexpected response data:', data);
                             throw new Error('Unexpected response format');
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Error checking Happy Call status:', error);
                         // On error, show form as fallback
                         showHappyCallForm(ticketNo);
                         hideHappyCallBanner();
@@ -377,7 +362,6 @@
                         form.classList.remove("d-none");
                         // Update form action
                         formElement.action = "/agent/" + ticketNo + "/happy-call";
-                        console.log('📝 Happy Call form is now visible for ticket:', ticketNo);
                     }
                 }
 
@@ -387,7 +371,6 @@
                     if (form) {
                         form.style.display = "none";
                         form.classList.add("d-none");
-                        console.log('🙈 Happy Call form is now hidden');
                     }
                 }
 
@@ -397,7 +380,6 @@
                     if (banner) {
                         banner.classList.remove("d-none");
                         banner.style.display = "block";
-                        console.log('🎯 Happy Call banner is now visible');
                     }
                 }
 
@@ -407,7 +389,6 @@
                     if (banner) {
                         banner.classList.add("d-none");
                         banner.style.display = "none";
-                        console.log('🙈 Happy Call banner is now hidden');
                     }
                 }
 
@@ -422,12 +403,6 @@
                         const formData = new FormData(form);
 
                         // Debug: Log form data
-                        console.log('🚀 Happy Call form submission started');
-                        console.log('Form action:', form.action);
-                        console.log('Form data:');
-                        for (let [key, value] of formData.entries()) {
-                            console.log(key, value);
-                        }
 
                         // Show loading state
                         submitBtn.disabled = true;
@@ -442,12 +417,9 @@
                             }
                         })
                         .then(response => {
-                            console.log('📡 Response status:', response.status);
-                            console.log('📡 Response headers:', response.headers);
                             return response.json();
                         })
                         .then(data => {
-                            console.log('📄 Response data:', data);
                             // Reset button state
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = 'Submit Happy Call';
@@ -456,18 +428,14 @@
                                 // Hide form and show banner
                                 hideHappyCallForm();
                                 showHappyCallBanner();
-                                console.log('🎉 Happy Call submitted successfully');
                             } else {
-                                console.error('❌ Server returned error:', data);
                                 alert('Error: ' + (data.error || 'Unknown error'));
                             }
                         })
                         .catch(error => {
-                            console.error('💥 Network error:', error);
                             // Reset button state
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = 'Submit Happy Call';
-                            console.error('Error submitting Happy Call:', error);
                             alert('Failed to submit Happy Call. Please try again.');
                         });
                     });
@@ -541,7 +509,6 @@
                             document.getElementById('coms_complaint_date').value = data.JobDate;
                             // Update aging calculation when COMS complaint date is set
                             updateAging(data.JobDate);
-                            console.log('COMS Date set:', data.JobDate, 'Aging updated');
                         }
                         if (data.JobType) document.getElementById('job_type').value = data.JobType;
                         if (data.CustomerName) document.getElementById('customer_name').value = data.CustomerName;
@@ -702,7 +669,6 @@
                                     }
                                 })
                                 .catch(error => {
-                                    console.error('Error loading feedbacks:', error);
                                     if (chatScrollArea) {
                                         chatScrollArea.innerHTML = '<p class="text-center text-muted my-5">Error loading chat messages.</p>';
                                     }
@@ -715,7 +681,6 @@
                                 ticketInput.value = ticketData.ticket_no;
 
                                 // Show success message for new ticket
-                                console.log('New ticket generated:', ticketData.ticket_no);
 
                                 // Show chat section for new ticket
                                 const chatSection = document.getElementById("chatSection");
@@ -787,7 +752,6 @@
                         document.getElementById("searchComplaintBtn").innerHTML = '<i class="bi bi-search"></i>';
                         document.getElementById("searchComplaintBtn").disabled = false;
 
-                        console.error('Error in complaint search process:', error);
                         showErrorMessage('Failed to process complaint. Please try again.');
                     });
                 });

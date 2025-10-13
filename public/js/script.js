@@ -50,8 +50,6 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(data => {
-                console.log('Received COMS data:', data);
-
                 if (data.error) {
                     // Show specific error messages for better user experience
                     if (data.error === 'Complaint number is invalid') {

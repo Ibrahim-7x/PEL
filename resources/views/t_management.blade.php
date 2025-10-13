@@ -2,33 +2,109 @@
 
 @section('title', 'Management')
 
-@push('styles')
-    <link href="{{ asset('css/managemnet.css') }}" rel="stylesheet">
-@endpush
+@section('meta')
+    @vite('resources/css/agent.css')
+    <meta name="last-feedback-id" content="{{ (isset($ici) && $ici && isset($feedbacks) && $feedbacks->count() > 0) ? $feedbacks->last()->id : 0 }}">
+@endsection
 
 @section('content')
-
     <div class="container mt-4">
         <div id="chatArea">
-            {{-- Ticket search form --}}
-            <form id="ticketSearchForm" class="form-card p-4 shadow rounded">
-                @csrf
+            {{-- Flash messages, errors, ticket search form, chat box --}}
+            {{-- Complaint search form --}}
+            <div class="form-card p-4 shadow rounded">
+
+                <!-- Error Alert for No Ticket Found -->
+                <div id="noTicketError" class="alert alert-danger d-none" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>No Ticket Found:</strong> <span id="errorMessage"></span>
+                </div>
+
+                <!-- Customer Detail From COMS -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header card-header-warning d-flex align-items-center">
+                        <i class="bi bi-database-gear text-warning me-2"></i>
+                        <span class="fw-semibold text-warning">Customer Detail From COMS</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Complaint #</label>
+                                <div class="input-group">
+                                    <input type="text" id="complaint_number" name="complaint_number" class="form-control"
+                                        placeholder="000000-000000" value="{{ $ici->complaint_number ?? '' }}">
+                                    <button type="button" id="searchComplaintBtn" class="btn btn-primary">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">Fetch customer/job details from COMS</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Job #</label>
+                                <input type="text" name="job_number" id="job_number" class="form-control" readonly value="{{ $ici->job_number ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">COMS Complaint Date</label>
+                                <input type="date" name="coms_complaint_date" id="coms_complaint_date" class="form-control"
+                                    readonly value="{{ $ici->coms_complaint_date ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Job Type</label>
+                                <input type="text" name="job_type" id="job_type" class="form-control" readonly value="{{ $ici->job_type ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Customer Name</label>
+                                <input type="text" name="customer_name" id="customer_name" class="form-control" readonly value="{{ $ici->customer_name ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Contact No</label>
+                                <input type="text" name="contact_no" id="contact_no" class="form-control" readonly value="{{ $ici->contact_no ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Technician Name</label>
+                                <input type="text" name="technician_name" id="technician_name" class="form-control" readonly value="{{ $ici->technician_name ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Date of Purchase</label>
+                                <input type="date" name="purchase_date" id="purchase_date" class="form-control" readonly value="{{ $ici->purchase_date ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Product</label>
+                                <input type="text" name="product" id="product" class="form-control" readonly value="{{ $ici->product ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Job Status</label>
+                                <input type="text" name="job_status" id="job_status" class="form-control" readonly value="{{ $ici->job_status ?? '' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Problem</label>
+                                <textarea id="problem" name="problem" rows="2" class="form-control" readonly>{{ $ici->problem ?? '' }}</textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Work Done</label>
+                                <textarea id="workdone" name="workdone" rows="2" class="form-control" readonly>{{ $ici->workdone ?? '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ticket Status Information -->
+                <div id="ticketStatusInfo" class="alert alert-info" style="display: none;">
+                    <div id="ticketStatusContent"></div>
+                </div>
+
                 <!-- Initial Customer Information -->
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <h5 class="mb-0 text-primary d-flex align-items-center gap-2">
                         <i class="bi bi-person-vcard"></i> Initial Customer Information
                     </h5>
-                    <span class="badge rounded-pill bg-light text-secondary">Step 1</span>
+                    <span class="badge rounded-pill bg-light text-secondary">View Only</span>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Ticket No</label>
-                        <div class="input-group">
-                            <input type="text" name="ticket_no" id="ticket_no" class="form-control" required value="{{ $ici->ticket_no ?? '' }}">
-                            <button type="button" id="searchBtn" class="btn btn-primary">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </div>
+                        <input type="text" name="ticket_no" id="ticket_no" class="form-control" readonly value="{{ $ici->ticket_no ?? '' }}">
                     </div>
 
                     <div class="col-md-6">
@@ -36,7 +112,7 @@
                         <input name="service_center" id="service_center" class="form-control" readonly value="{{ $ici->service_center ?? '' }}">
                     </div>
                     <div class="col-md-6">
-                        <label for="complaint_escalation_date" class="form-label">Complaint Escalation Date</label>
+                        <label for="complaint_escalation_date" class="form-label fw-semibold">Complaint Escalation Date</label>
                         <input type="date" class="form-control" name="complaint_escalation_date"
                             id="complaint_escalation_date" readonly value="{{ $ici ? \Carbon\Carbon::parse($ici->complaint_escalation_date)->format('Y-m-d') : '' }}">
                     </div>
@@ -46,14 +122,14 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Aging</label>
-                        <input type="number" name="aging" id="aging" class="form-control" readonly value="{{ $ici ? round(\Carbon\Carbon::parse($ici->complaint_escalation_date)->diffInDays(now())) : '' }}">
+                        <input type="number" name="aging" id="aging" class="form-control" readonly value="">
                     </div>
                     <div class="col-md-6">
                         <label for="complaint_category" class="form-label fw-semibold">Complaint Category</label>
                         <input name="complaint_category" id="complaint_category" class="form-control" readonly value="{{ $ici->complaint_category ?? '' }}">
                     </div>
                     <div class="col-md-6">
-                        <label for="agent_name" class="form-label">Agent Name</label>
+                        <label for="agent_name" class="form-label fw-semibold">Agent Name</label>
                         <input type="text" class="form-control" name="agent_name" id="agent_name" readonly value="{{ $ici->agent_name ?? '' }}">
                     </div>
                     <div class="col-md-6">
@@ -69,10 +145,19 @@
                         <textarea name="voice_of_customer" id="voice_of_customer" rows="3" class="form-control" readonly>{{ $ici->voice_of_customer ?? '' }}</textarea>
                     </div>
                 </div>
+
             </form>
 
             {{-- Chat section --}}
-            <div id="chatSection" style="{{ empty($ici) ? 'display: none;' : '' }}">
+            @php
+                $shouldShowChat = $ici;
+            @endphp
+            <div id="chatSection" style="{{ $shouldShowChat ? '' : 'display: none;' }}">
+                {{-- Config for chat.js (used when chatArea is updated via AJAX) --}}
+                <div id="chatConfig" data-feedback-list-url="{{ $ici ? route('management.feedback.list', $ici->ticket_no) : '' }}"
+                    data-current-user="{{ auth()->user()->name }}" data-agent-index-url="{{ route('t_management.index') }}"
+                    data-last-feedback-id="{{ $feedbacks->last()->id ?? 0 }}"></div>
+
                 {{-- Chat header --}}
                 <div class="d-flex align-items-center mb-3 mt-4">
                     <h4 class="mb-0">
@@ -87,48 +172,39 @@
                             @forelse($feedbacks as $feedback)
                                 @php
                                     $isMe = isset(auth()->user()->name) && $feedback->name === auth()->user()->name;
+                                    $messageClass = $isMe ? 'justify-content-end' : 'justify-content-start';
+                                    $bgColor = $isMe ? '#d1e7dd' : '#e2e3e5';
+                                    $senderName = $isMe ? 'You' : $feedback->name;
                                 @endphp
 
-                                @if ($isMe)
-                                    <div class="d-flex justify-content-end mb-3">
-                                        <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
-                                            <div class="fw-semibold mb-1">You <span
-                                                    class="text-muted">({{ $feedback->role }})</span></div>
-                                            <div>{{ $feedback->message }}</div>
-                                            <div class="mt-1"><small
-                                                    class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small>
-                                            </div>
+                                <div class="d-flex {{ $messageClass }} mb-3">
+                                    <div class="p-2 rounded-3" style="max-width: 70%; background-color: {{ $bgColor }};">
+                                        <div class="fw-semibold mb-1">{{ $senderName }} <span
+                                                class="text-muted">({{ $feedback->role }})</span></div>
+                                        <div>{{ $feedback->message }}</div>
+                                        <div class="mt-1"><small
+                                                class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small>
                                         </div>
                                     </div>
-                                @else
-                                    <div class="d-flex justify-content-start mb-3">
-                                        <div class="p-2 rounded-3" style="max-width: 70%; background-color: #e2e3e5;">
-                                            <div class="fw-semibold mb-1">{{ $feedback->name }} <span
-                                                    class="text-muted">({{ $feedback->role }})</span></div>
-                                            <div>{{ $feedback->message }}</div>
-                                            <div class="mt-1"><small
-                                                    class="text-muted">{{ $feedback->created_at->format('d M Y, h:i A') }}</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
+                                </div>
                             @empty
-                                <p class="text-center text-muted my-5">No feedback yet. Be the first to send a message!
-                                </p>
+                                <p class="text-center text-muted my-5">No feedback yet. Be the first to send a message!</p>
                             @endforelse
                         @endif
                     </div>
 
                     {{-- Chat input --}}
                     <div class="card-footer card-footer-grey">
-                        <form id="chatForm" action="{{ $ici ? route('management.feedback.store', $ici->ticket_no) : '#' }}"
-                            method="POST" class="chat-input-form">
-                            @csrf
+                        @php
+                            $chatTicketNo = $ici ? $ici->ticket_no : null;
+                        @endphp
+                        <form id="chatForm" action="{{ $chatTicketNo ? route('management.feedback.store', $chatTicketNo) : '#' }}" method="POST"
+                            class="chat-input-form">
                             <div class="input-group">
                                 <input type="text" name="message" id="chatMessage"
-                                    class="form-control @error('message') is-invalid @enderror"
-                                    placeholder="Type your message…" autocomplete="off" required {{ empty($ici) ? 'disabled' : '' }}>
-                                <button type="submit" class="btn btn-primary" {{ empty($ici) ? 'disabled' : '' }}>
+                                        class="form-control @error('message') is-invalid @enderror"
+                                        placeholder="Type your message…" autocomplete="off" required {{ empty($chatTicketNo) ? 'disabled' : '' }}">
+                                    <button type="submit" class="btn btn-primary" {{ empty($chatTicketNo) ? 'disabled' : '' }}>
                                     <i class="bi bi-send-fill me-1"></i> Send
                                 </button>
                             </div>
@@ -138,101 +214,234 @@
                         </form>
                     </div>
                 </div>
-                <script>
-                    let lastFeedbackId = {{ $feedbacks->last()->id ?? 0 }};
-
-                    function fetchNewFeedbacks() {
-                        if (document.getElementById("chatSection").style.display !== "none") {
-                            const ticketNo = document.getElementById("ticketBadge").textContent;
-                            if (ticketNo) {
-                                fetch("{{ url('/home-management/ticket') }}/" + ticketNo + "/feedbacks")
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        const chatBox = document.getElementById('chatScrollArea');
-
-                                        data.forEach(fb => {
-                                            if (fb.id > lastFeedbackId) {
-                                                const isMe = fb.name === "{{ auth()->user()->name }}";
-
-                                                const bubble = document.createElement('div');
-                                                bubble.classList.add('d-flex', isMe ? 'justify-content-end' :
-                                                    'justify-content-start', 'mb-3');
-
-                                                bubble.innerHTML = `
-                                                    <div class="p-2 rounded-3" style="max-width: 70%; background-color: ${isMe ? '#d1e7dd' : '#e2e3e5'};">
-                                                        <div class="fw-semibold mb-1">
-                                                            ${isMe ? 'You' : fb.name} <span class="text-muted">(${fb.role})</span>
-                                                        </div>
-                                                        <div>${fb.message}</div>
-                                                        <div class="mt-1"><small class="text-muted">${fb.time}</small></div>
-                                                    </div>
-                                                `;
-
-                                                chatBox.appendChild(bubble);
-                                                chatBox.scrollTop = chatBox.scrollHeight;
-                                                lastFeedbackId = fb.id;
-                                            }
-                                        });
-                                    })
-                                    .catch(err => console.error(err));
-                            }
-                        }
-                    }
-                    setInterval(fetchNewFeedbacks, 5000);
-                </script>
             </div>
 
             <script>
-                document.getElementById("searchBtn").addEventListener("click", function() {
-                    let ticketNo = document.getElementById("ticket_no").value.trim();
+                // Function to calculate and update aging
+                function updateAging(complaintDate) {
+                    if (complaintDate) {
+                        try {
+                            // Handle different date formats
+                            let complaintDateObj;
+                            if (complaintDate.includes(' ')) {
+                                // Handle Laravel date format like "2025-10-07 00:00:00"
+                                complaintDateObj = new Date(complaintDate.replace(' ', 'T'));
+                            } else {
+                                // Handle date format like "2025-10-07"
+                                complaintDateObj = new Date(complaintDate);
+                            }
 
-                    if (!ticketNo) {
-                        alert("Please enter a ticket number");
+                            const today = new Date();
+                            const diffTime = Math.abs(today - complaintDateObj);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            document.getElementById('aging').value = diffDays;
+                        } catch (error) {
+                            document.getElementById('aging').value = '';
+                        }
+                    } else {
+                        document.getElementById('aging').value = '';
+                    }
+                }
+
+                // Initialize aging on page load if we have existing data
+                document.addEventListener('DOMContentLoaded', function() {
+                    @if($ici && $ici->complaint_escalation_date)
+                        updateAging('{{ $ici->complaint_escalation_date }}');
+                    @endif
+
+                });
+
+
+                // Function to show error message
+                function showErrorMessage(message) {
+                    const errorDiv = document.getElementById("noTicketError");
+                    const errorMessageSpan = document.getElementById("errorMessage");
+                    if (errorDiv && errorMessageSpan) {
+                        errorMessageSpan.textContent = message;
+                        errorDiv.classList.remove("d-none");
+                        // Scroll to the error message
+                        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+
+                // Function to hide error message
+                function hideErrorMessage() {
+                    const errorDiv = document.getElementById("noTicketError");
+                    if (errorDiv) {
+                        errorDiv.classList.add("d-none");
+                    }
+                }
+
+                // Handle complaint number search
+                document.getElementById("searchComplaintBtn").addEventListener("click", function() {
+                    const complaintNumber = document.getElementById("complaint_number").value.trim();
+
+                    if (!complaintNumber) {
+                        showErrorMessage("Please enter a complaint number");
                         return;
                     }
 
-                    // Populate the fields via AJAX
-                    fetch("{{ route('management.ticket.search') }}", {
+                    // Hide any previous error messages
+                    hideErrorMessage();
+
+                    // Show loading state
+                    this.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+                    this.disabled = true;
+
+                    // First, fetch COMS data
+                    fetch("{{ route('management.fetch.coms') }}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                            "Accept": "application/json"
+                        },
+                        body: JSON.stringify({
+                            complaint_number: complaintNumber
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Reset button state
+                        document.getElementById("searchComplaintBtn").innerHTML = '<i class="bi bi-search"></i>';
+                        document.getElementById("searchComplaintBtn").disabled = false;
+
+                        if (data.error) {
+                            showErrorMessage('COMS Error: ' + data.error);
+                            return;
+                        }
+
+                        // Populate COMS fields with fetched data
+                        if (data.JobNo) document.getElementById('job_number').value = data.JobNo;
+                        if (data.JobDate) {
+                            document.getElementById('coms_complaint_date').value = data.JobDate;
+                            // Update aging calculation when COMS complaint date is set
+                            updateAging(data.JobDate);
+                        }
+                        if (data.JobType) document.getElementById('job_type').value = data.JobType;
+                        if (data.CustomerName) document.getElementById('customer_name').value = data.CustomerName;
+                        if (data.ContactNo) document.getElementById('contact_no').value = data.ContactNo;
+                        if (data.TechnicianName) document.getElementById('technician_name').value = data.TechnicianName;
+                        if (data.PurchaseDate) document.getElementById('purchase_date').value = data.PurchaseDate;
+                        if (data.Product) document.getElementById('product').value = data.Product;
+                        if (data.JobStatus) document.getElementById('job_status').value = data.JobStatus;
+                        if (data.Problem) document.getElementById('problem').value = data.Problem;
+                        if (data.WorkDone) document.getElementById('workdone').value = data.WorkDone;
+
+                        // Now fetch ticket information (read-only, no updates)
+                        return fetch("{{ route('management.fetch.ticket.info') }}", {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
-                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                                "Accept": "application/json"
                             },
                             body: JSON.stringify({
-                                ticket_no: ticketNo
+                                complaint_number: complaintNumber
                             })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.error) {
-                                alert(data.error);
-                            } else {
-                                document.getElementById("service_center").value = data.service_center;
-                                document.getElementById("complaint_escalation_date").value = data
-                                    .complaint_escalation_date ?? '';
-                                document.getElementById("case_status").value = data.case_status;
-                                document.getElementById("aging").value = data.aging;
-                                document.getElementById("complaint_category").value = data.complaint_category;
-                                document.getElementById("agent_name").value = data.agent_name;
-                                document.getElementById("reason_of_escalation").value = data.reason_of_escalation;
-                                document.getElementById("escalation_level").value = data.escalation_level;
-                                document.getElementById("voice_of_customer").value = data.voice_of_customer;
+                        });
+                    })
+                    .then(response => response.json())
+                    .then(ticketData => {
+                        if (ticketData.success) {
+                            // Set the ticket number
+                            const ticketInput = document.getElementById('ticket_no');
+                            ticketInput.value = ticketData.ticket_no;
 
-                                // Show chat section and update it
-                                document.getElementById("chatSection").style.display = "block";
-                                document.getElementById("ticketBadge").textContent = ticketNo;
-                                document.getElementById("chatForm").action = "{{ url('/home-management/ticket') }}/" + ticketNo + "/feedback";
-                                document.getElementById("chatMessage").disabled = false;
-                                document.getElementById("chatForm").querySelector("button").disabled = false;
+                            // If ticket exists, populate form with existing data (read-only)
+                            if (ticketData.exists && ticketData.ticket_data) {
+                                // Show status message for existing ticket (read-only)
+                                const statusInfo = document.getElementById('ticketStatusInfo');
+                                const statusContent = document.getElementById('ticketStatusContent');
+                                if (statusInfo && statusContent) {
+                                    statusInfo.className = 'alert alert-info';
+                                    statusContent.innerHTML = `
+                                        <strong>📋 Ticket Found</strong><br>
+                                        <small>Ticket <strong>${ticketData.ticket_no}</strong> found for this complaint number.</small><br>
+                                        <small>Ready for chat and tracking.</small>
+                                    `;
+                                    statusInfo.style.display = 'block';
+                                }
 
-                                // Clear existing chat messages
-                                document.getElementById("chatScrollArea").innerHTML = '<p class="text-center text-muted my-5">Loading chat...</p>';
+                                // Populate Initial Customer Information fields
+                                if (ticketData.ticket_data.service_center) {
+                                    document.getElementById('service_center').value = ticketData.ticket_data.service_center;
+                                }
+                                if (ticketData.ticket_data.case_status) {
+                                    document.getElementById('case_status').value = ticketData.ticket_data.case_status;
+                                }
+                                if (ticketData.ticket_data.complaint_category) {
+                                    document.getElementById('complaint_category').value = ticketData.ticket_data.complaint_category;
+                                }
+                                if (ticketData.ticket_data.agent_name) {
+                                    document.getElementById('agent_name').value = ticketData.ticket_data.agent_name;
+                                }
+                                if (ticketData.ticket_data.reason_of_escalation) {
+                                    document.getElementById('reason_of_escalation').value = ticketData.ticket_data.reason_of_escalation;
+                                }
+                                if (ticketData.ticket_data.voice_of_customer) {
+                                    document.getElementById('voice_of_customer').value = ticketData.ticket_data.voice_of_customer;
+                                }
 
-                                // Load feedbacks
-                                fetch("{{ url('/home-management/ticket') }}/" + ticketNo + "/feedbacks")
-                                    .then(response => response.json())
-                                    .then(feedbacks => {
-                                        const chatBox = document.getElementById("chatScrollArea");
+                                // Display current escalation level (read-only) - ACTUAL DATABASE VALUE
+                                if (ticketData.ticket_data.escalation_level) {
+                                    const escalationInput = document.getElementById('escalation_level');
+                                    if (escalationInput) {
+                                        escalationInput.value = ticketData.ticket_data.escalation_level;
+                                        escalationInput.style.borderColor = '#17a2b8';
+                                        escalationInput.title = `Current escalation level: ${ticketData.ticket_data.escalation_level}`;
+                                    }
+                                }
+
+                                // Update aging based on ICI complaint escalation date
+                                if (ticketData.ticket_data.complaint_escalation_date) {
+                                    document.getElementById('complaint_escalation_date').value = ticketData.ticket_data.complaint_escalation_date;
+                                    updateAging(ticketData.ticket_data.complaint_escalation_date);
+                                }
+                            }
+
+                            // Show chat section and update it
+                            const chatSection = document.getElementById("chatSection");
+                            if (chatSection) {
+                                chatSection.style.display = "block";
+                            }
+
+                            // Update ticket badge
+                            const ticketBadge = document.getElementById("ticketBadge");
+                            if (ticketBadge) {
+                                ticketBadge.textContent = ticketData.ticket_no;
+                            }
+
+                            // Update chat form action
+                            const chatForm = document.getElementById("chatForm");
+                            if (chatForm) {
+                                chatForm.action = "{{ url('/home-management/ticket') }}/" + ticketData.ticket_no + "/feedback";
+                            }
+
+                            // Enable chat input
+                            const chatMessage = document.getElementById("chatMessage");
+                            if (chatMessage) {
+                                chatMessage.disabled = false;
+                            }
+
+                            const chatFormButton = document.getElementById("chatForm").querySelector("button");
+                            if (chatFormButton) {
+                                chatFormButton.disabled = false;
+                            }
+
+
+                            // Clear existing chat messages
+                            const chatScrollArea = document.getElementById("chatScrollArea");
+                            if (chatScrollArea) {
+                                chatScrollArea.innerHTML = '<p class="text-center text-muted my-5">Loading chat...</p>';
+                            }
+
+                            // Load feedbacks
+                            fetch("{{ url('/home-management/ticket') }}/" + ticketData.ticket_no + "/feedbacks")
+                                .then(response => response.json())
+                                .then(feedbacks => {
+                                    const chatBox = document.getElementById("chatScrollArea");
+                                    if (chatBox) {
                                         chatBox.innerHTML = '';
 
                                         if (feedbacks.length === 0) {
@@ -257,65 +466,115 @@
                                             });
                                             chatBox.scrollTop = chatBox.scrollHeight;
                                         }
-                                    })
-                                    .catch(error => {
-                                        console.error('Error loading feedbacks:', error);
-                                        document.getElementById("chatScrollArea").innerHTML = '<p class="text-center text-muted my-5">Error loading chat messages.</p>';
-                                    });
+                                    }
+                                })
+                                .catch(error => {
+                                    if (chatScrollArea) {
+                                        chatScrollArea.innerHTML = '<p class="text-center text-muted my-5">Error loading chat messages.</p>';
+                                    }
+                                });
+                        } else {
+                            // Handle new ticket creation
+                            if (ticketData.is_new_ticket && ticketData.ticket_no) {
+                                // Set the new ticket number
+                                const ticketInput = document.getElementById('ticket_no');
+                                ticketInput.value = ticketData.ticket_no;
+
+                                // Show success message for new ticket
+
+                                // Show chat section for new ticket
+                                const chatSection = document.getElementById("chatSection");
+                                if (chatSection) {
+                                    chatSection.style.display = "block";
+                                }
+
+                                // Update ticket badge
+                                const ticketBadge = document.getElementById("ticketBadge");
+                                if (ticketBadge) {
+                                    ticketBadge.textContent = ticketData.ticket_no;
+                                }
+
+                                // Update chat form action
+                                const chatForm = document.getElementById("chatForm");
+                                if (chatForm) {
+                                    chatForm.action = "{{ url('/home-management/ticket') }}/" + ticketData.ticket_no + "/feedback";
+                                }
+
+                                // Enable chat input
+                                const chatMessage = document.getElementById("chatMessage");
+                                if (chatMessage) {
+                                    chatMessage.disabled = false;
+                                }
+
+                                const chatFormButton = document.getElementById("chatForm").querySelector("button");
+                                if (chatFormButton) {
+                                    chatFormButton.disabled = false;
+                                }
+
+
+                                // Set escalation level for new tickets (read-only display)
+                                if (ticketData.ticket_data && ticketData.ticket_data.escalation_level) {
+                                    const escalationInput = document.getElementById('escalation_level');
+                                    if (escalationInput) {
+                                        escalationInput.value = ticketData.ticket_data.escalation_level;
+                                        escalationInput.style.borderColor = '#17a2b8';
+                                        escalationInput.title = `Escalation level: ${ticketData.ticket_data.escalation_level}`;
+                                    }
+                                }
+
+                                // Clear existing chat messages and show empty state
+                                const chatScrollArea = document.getElementById("chatScrollArea");
+                                if (chatScrollArea) {
+                                    chatScrollArea.innerHTML = '<p class="text-center text-muted my-5">No feedback yet. Be the first to send a message!</p>';
+                                }
+
+                            } else {
+                                // Handle errors or no ticket found
+                                if (ticketData.message) {
+                                    showErrorMessage(ticketData.message);
+                                } else {
+                                    showErrorMessage('Error: ' + (ticketData.error || 'Unknown error occurred'));
+                                }
+
+                                // Ensure chat section remains hidden for errors
+                                const chatSection = document.getElementById("chatSection");
+                                if (chatSection) {
+                                    chatSection.style.display = "none";
+                                }
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('An error occurred while searching for the ticket.');
-                        });
+                        }
+                    })
+                    .catch(error => {
+                        // Reset button state
+                        document.getElementById("searchComplaintBtn").innerHTML = '<i class="bi bi-search"></i>';
+                        document.getElementById("searchComplaintBtn").disabled = false;
+
+                        showErrorMessage('Failed to process complaint. Please try again.');
+                    });
                 });
 
-                // Handle chat form submission
-                document.getElementById("chatForm").addEventListener("submit", function(e) {
-                    e.preventDefault();
 
-                    const form = this;
-                    const formData = new FormData(form);
 
-                    fetch(form.action, {
-                            method: 'POST',
-                            body: formData,
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value
-                            }
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Append new message bubble (right side "You")
-                                const chatBox = document.getElementById('chatScrollArea');
-                                const bubble = document.createElement('div');
-                                bubble.classList.add('d-flex', 'justify-content-end', 'mb-3');
-                                bubble.innerHTML = `
-                                <div class="p-2 rounded-3" style="max-width: 70%; background-color: #d1e7dd;">
-                                    <div class="fw-semibold mb-1">You <span class="text-muted">(${data.role})</span></div>
-                                    <div>${data.message}</div>
-                                    <div class="mt-1"><small class="text-muted">${data.time}</small></div>
-                                </div>
-                            `;
-                                chatBox.appendChild(bubble);
-                                chatBox.scrollTop = chatBox.scrollHeight; // auto-scroll
 
-                                // Reset input
-                                document.getElementById('chatMessage').value = '';
-                            } else if (data.error) {
-                                alert(data.error);
-                            }
-                        })
-                        .catch(err => console.error(err));
-                });
             </script>
         </div>
     </div>
 
-    <!-- ⚫ Footer -->
     <footer class="text-center py-4 bg-dark text-white mt-5">
         <p class="mb-0">&copy; {{ date('Y') }} PEL. All rights reserved.</p>
     </footer>
+@endsection
+
+
+@section('scripts')
+    <script>
+        // Initialize window variables for chat functionality
+        window.agentIndexUrl = "{{ route('t_management.index') }}";
+        @if (isset($ici) && $ici)
+            window.feedbackListUrl = "{{ route('management.feedback.list', $ici->ticket_no) }}";
+            window.currentUser = "{{ auth()->user()->name }}";
+        @endif
+    </script>
+    <script src="{{ asset('js/script.js') }}"></script>
+    <script src="{{ asset('js/chat.js') }}"></script>
 @endsection

@@ -23,26 +23,6 @@ class ManagementController extends Controller
         $this->middleware('auth');
     }
     
-    public function index(Request $request)
-    {
-        $ici = null;
-        $feedbacks = collect();
-
-        if ($request->filled('ticket_no')) {
-            $ici = InitialCustomerInformation::where('ticket_no', $request->ticket_no)->first();
-
-            if ($ici) {
-                $feedbacks = Feedback::where('ici_id', $ici->id)
-                    ->orderBy('created_at', 'asc')
-                    ->get();
-            }
-        }
-
-        return view('management', compact(
-            'ici',
-            'feedbacks'
-        ));
-    }
 
     // Chat page for management
     public function tIndex(Request $request)
@@ -66,25 +46,6 @@ class ManagementController extends Controller
         ));
     }
 
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
-    public function showTicket(string $ticket_no)
-    {
-        $ici = InitialCustomerInformation::where('ticket_no', $ticket_no)->firstOrFail();
-
-        $feedbacks = Feedback::where('ici_id', $ici->id)
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        // Pass the same variable names the Blade expects
-        return view('Management', [
-            'ici'        => $ici,
-            'feedbacks'  => $feedbacks,
-        ]);
-    }
 
     public function storeFeedback(Request $request, string $ticket_no)
     {
@@ -192,10 +153,10 @@ class ManagementController extends Controller
     public function searchTicket(Request $request)
     {
         try {
-            $ticketNo = $request->ticket_no;
+            $complaintNumber = $request->complaint_number;
 
             $record = \DB::table('initial_customer_information')
-                        ->where('ticket_no', $ticketNo)
+                        ->where('complaint_number', $complaintNumber)
                         ->first();
 
             if (!$record) {
@@ -213,17 +174,22 @@ class ManagementController extends Controller
             }
 
             return response()->json([
-                'service_center'        => $record->service_center,
-                'complaint_escalation_date' => $record->complaint_escalation_date 
-                ? \Carbon\Carbon::parse($record->complaint_escalation_date)->format('Y-m-d') 
-                : '',
-                'case_status'           => $record->case_status,
-                'aging'                 => $aging,
-                'complaint_category'    => $record->complaint_category,
-                'agent_name'                  => $record->agent_name,
-                'reason_of_escalation'  => $record->reason_of_escalation,
-                'escalation_level'      => $record->escalation_level,
-                'voice_of_customer'        => $record->voice_of_customer,
+                'success' => true,
+                'exists' => true,
+                'ticket_no' => $record->ticket_no,
+                'ticket_data' => [
+                    'service_center' => $record->service_center,
+                    'complaint_escalation_date' => $record->complaint_escalation_date
+                    ? \Carbon\Carbon::parse($record->complaint_escalation_date)->format('Y-m-d')
+                    : '',
+                    'case_status' => $record->case_status,
+                    'aging' => $aging,
+                    'complaint_category' => $record->complaint_category,
+                    'agent_name' => $record->agent_name,
+                    'reason_of_escalation' => $record->reason_of_escalation,
+                    'escalation_level' => $record->escalation_level,
+                    'voice_of_customer' => $record->voice_of_customer,
+                ]
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -232,6 +198,7 @@ class ManagementController extends Controller
             ], 500);
         }
     }
+
 
     public function getFeedbacks(Request $request, string $ticket_no)
     {
