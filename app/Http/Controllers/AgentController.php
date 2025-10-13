@@ -111,7 +111,7 @@ class AgentController extends Controller
             'ticket_no' => $request->ticket_no,
             'complaint_number' => $complaintNumber,
             'service_center' => $request->service_center,
-            'complaint_escalation_date' => $request->complaint_escalation_date,
+            'complaint_escalation_date' => now(),
             'case_status' => $request->case_status,
             'complaint_category' => $request->complaint_category,
             'agent_name' => $request->agent_name,
@@ -135,6 +135,7 @@ class AgentController extends Controller
             $updateData = [
                 'case_status' => $request->case_status,
                 'voice_of_customer' => $request->voice_of_customer,
+                'complaint_escalation_date' => now(),
             ];
 
             // Auto-update escalation level only if case status is "In Progress"
@@ -197,7 +198,6 @@ class AgentController extends Controller
                 'ticket_no' => 'required|unique:initial_customer_information,ticket_no',
                 'complaint_number_hidden' => 'required|unique:initial_customer_information,complaint_number',
                 'service_center' => 'required',
-                'complaint_escalation_date' => 'required|date',
                 'case_status' => 'required',
                 'complaint_category' => 'required',
                 'agent_name' => 'required',
