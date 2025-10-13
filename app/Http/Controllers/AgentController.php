@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Carbon;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreHappyCallStatusRequest;
 use App\Models\ServiceCenter;
@@ -746,15 +748,15 @@ class AgentController extends Controller
      */
     public function saveHappyCallStatus(Request $request, string $ticket_no)
     {
-        try {
-            // Debug logging
-            Log::info('🚀 Happy Call save attempt started', [
-                'ticket_no' => $ticket_no,
-                'request_method' => $request->method(),
-                'request_data' => $request->all(),
-                'user_id' => auth()->id(),
-            ]);
+        // Debug logging
+        Log::info('🚀 Happy Call save attempt started', [
+            'ticket_no' => $ticket_no,
+            'request_method' => $request->method(),
+            'request_data' => $request->all(),
+            'user_id' => auth()->id(),
+        ]);
 
+        try {
             // Find ticket with optimized query (select only needed columns)
             $ticket = InitialCustomerInformation::select('id', 'ticket_no')
                 ->where('ticket_no', $ticket_no)
@@ -771,6 +773,15 @@ class AgentController extends Controller
             // If we have form data, validate and create
             return $this->handleHappyCallCreation($request, $ticket, $ticket_no);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Handle validation errors specifically
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed: ' . implode(', ', $e->errors()['resolved_date'] ?? $e->errors()['happy_call_date'] ?? ['Invalid dates'])
+                ], 422);
+            }
+            return back()->withErrors($e->errors());
         } catch (\Exception $e) {
             Log::error('Unexpected error in saveHappyCallStatus', [
                 'ticket_no' => $ticket_no,
@@ -869,41 +880,51 @@ class AgentController extends Controller
         $happyCallDate = $request->input('happy_call_date');
 
         if ($resolvedDate && $happyCallDate) {
-            $resolved = Carbon::parse($resolvedDate);
-            $happyCall = Carbon::parse($happyCallDate);
-            $today = Carbon::today();
+            try {
+                $resolved = Carbon::parse($resolvedDate);
+                $happyCall = Carbon::parse($happyCallDate);
+                $today = Carbon::today();
 
-            // Business rule: Resolution date cannot be in the future
-            if ($resolved->isAfter($today)) {
+                // Business rule: Resolution date cannot be in the future
+                if ($resolved->isAfter($today)) {
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Resolution date cannot be in the future.'
+                        ], 422);
+                    }
+                    return back()->withErrors(['resolved_date' => 'Resolution date cannot be in the future.']);
+                }
+
+                // Business rule: Happy call should not be more than 30 days after resolution
+                if ($happyCall->diffInDays($resolved) > 30) {
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Happy call date should not be more than 30 days after resolution date.'
+                        ], 422);
+                    }
+                    return back()->withErrors(['happy_call_date' => 'Happy call date should not be more than 30 days after resolution date.']);
+                }
+
+                // Business rule: Resolution should not be more than 90 days ago
+                if ($resolved->diffInDays($today) > 90) {
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Resolution date should not be more than 90 days ago.'
+                        ], 422);
+                    }
+                    return back()->withErrors(['resolved_date' => 'Resolution date should not be more than 90 days ago.']);
+                }
+            } catch (\Exception $e) {
                 if ($request->ajax() || $request->wantsJson()) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'Resolution date cannot be in the future.'
+                        'error' => 'Invalid date format provided.'
                     ], 422);
                 }
-                return back()->withErrors(['resolved_date' => 'Resolution date cannot be in the future.']);
-            }
-
-            // Business rule: Happy call should not be more than 30 days after resolution
-            if ($happyCall->diffInDays($resolved) > 30) {
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Happy call date should not be more than 30 days after resolution date.'
-                    ], 422);
-                }
-                return back()->withErrors(['happy_call_date' => 'Happy call date should not be more than 30 days after resolution date.']);
-            }
-
-            // Business rule: Resolution should not be more than 90 days ago
-            if ($resolved->diffInDays($today) > 90) {
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Resolution date should not be more than 90 days ago.'
-                    ], 422);
-                }
-                return back()->withErrors(['resolved_date' => 'Resolution date should not be more than 90 days ago.']);
+                return back()->withErrors(['resolved_date' => 'Invalid date format.']);
             }
         }
 
