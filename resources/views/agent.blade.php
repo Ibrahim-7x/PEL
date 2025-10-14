@@ -320,7 +320,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <strong>📋 Existing Ticket Found</strong><br>
                                 <small>Ticket <strong>${ticketData.ticket_no}</strong> found for this complaint number.</small><br>
                                 <small>Current: <strong>${ticketData.current_escalation}</strong> → Will update to: <strong>${ticketData.next_escalation}</strong></small><br>
-                                <small class="text-warning">💡 Database will be updated when you submit the form</small>
                             `;
                             statusInfo.style.display = 'block';
 
