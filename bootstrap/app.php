@@ -25,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'check-complaint-ticket',
             'home-agent/ticket/*/feedback',
             'agent/feedback/store/*',
+            'mentions',
+            'mentions/*/read',
+            'search-usernames',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

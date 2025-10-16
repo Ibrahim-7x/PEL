@@ -12,4 +12,9 @@ class Feedback extends Model
     {
         return $this->belongsTo(InitialCustomerInformation::class, 'ici_id');
     }
+
+    public function mentions()
+    {
+        return $this->hasMany(Mention::class);
+    }
 }

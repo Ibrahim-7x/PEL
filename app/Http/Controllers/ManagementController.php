@@ -10,6 +10,8 @@ use App\Models\InitialCustomerInformation;
 use App\Models\Feedback;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
+use App\Models\Mention;
+use App\Models\User;
 
 class ManagementController extends Controller
 {
@@ -62,6 +64,9 @@ class ManagementController extends Controller
                 'role'    => Auth::user()->role ?? 'Management',
                 'message' => $request->message,
             ]);
+
+            // Process mentions in the feedback message
+            $this->processMentions($feedback, $request->message);
 
             // If AJAX, return JSON
             if ($request->ajax()) {
@@ -218,5 +223,38 @@ class ManagementController extends Controller
             });
 
         return response()->json($feedbacks);
+    }
+
+    /**
+     * Process mentions in feedback message and create mention records
+     *
+     * @param Feedback $feedback
+     * @param string $message
+     * @return void
+     */
+    private function processMentions(Feedback $feedback, string $message)
+    {
+        // Find all @username patterns in the message
+        preg_match_all('/@([a-zA-Z0-9_]+)/', $message, $matches);
+
+        if (!empty($matches[1])) {
+            $usernames = array_unique($matches[1]);
+
+            foreach ($usernames as $username) {
+                // Find user by username
+                $mentionedUser = User::where('username', $username)->first();
+
+                if ($mentionedUser && $mentionedUser->id !== Auth::id()) {
+                    // Create mention record
+                    Mention::create([
+                        'feedback_id' => $feedback->id,
+                        'mentioned_user_id' => $mentionedUser->id,
+                        'mentioner_user_id' => Auth::id(),
+                        'username_mentioned' => $username,
+                        'is_read' => false,
+                    ]);
+                }
+            }
+        }
     }
 }

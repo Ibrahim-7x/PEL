@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreHappyCallStatusRequest;
 use App\Models\ServiceCenter;
@@ -20,6 +21,8 @@ use App\Models\Feedback;
 use App\Models\HappyCallStatus;
 use App\Models\DelayReason;
 use App\Models\InitialCustomerInformationAuditLog;
+use App\Models\Mention;
+use App\Models\User;
 
 class AgentController extends Controller
 {
@@ -286,6 +289,9 @@ class AgentController extends Controller
                 'role'    => Auth::user()->role ?? 'Agent',
                 'message' => $request->message,
             ]);
+
+            // Process mentions in the feedback message
+            $this->processMentions($feedback, $request->message);
 
             // If AJAX, return JSON
             if ($request->ajax()) {
@@ -715,6 +721,133 @@ class AgentController extends Controller
         }
     }
 
+    /**
+     * Get unread mentions for the current user
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMentions(Request $request)
+    {
+        try {
+            $mentions = Mention::with(['feedback.ici', 'mentionerUser'])
+                ->where('mentioned_user_id', Auth::id())
+                ->where('is_read', false)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($mention) {
+                    return [
+                        'id' => $mention->id,
+                        'feedback_id' => $mention->feedback_id,
+                        'ticket_no' => $mention->feedback->ici->ticket_no,
+                        'mentioner_name' => $mention->mentionerUser->name,
+                        'message' => Str::limit($mention->feedback->message, 100),
+                        'created_at' => $mention->created_at->diffForHumans(),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'mentions' => $mentions,
+                'count' => $mentions->count()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching mentions', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to fetch mentions'
+            ], 500);
+        }
+    }
+
+    /**
+     * Mark mention as read
+     *
+     * @param Request $request
+     * @param int $mentionId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function markMentionAsRead(Request $request, $mentionId)
+    {
+        try {
+            $mention = Mention::where('id', $mentionId)
+                ->where('mentioned_user_id', Auth::id())
+                ->firstOrFail();
+
+            $mention->update(['is_read' => true]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mention marked as read'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error marking mention as read', [
+                'error' => $e->getMessage(),
+                'mention_id' => $mentionId,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to mark mention as read'
+            ], 500);
+        }
+    }
+
+    /**
+     * Search usernames for autocomplete
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function searchUsernames(Request $request)
+    {
+        try {
+            $query = $request->input('query', '');
+            $limit = $request->input('limit', 10);
+
+            if (strlen($query) < 1) {
+                return response()->json([
+                    'success' => true,
+                    'usernames' => []
+                ]);
+            }
+
+            $usernames = User::where('username', 'like', $query . '%')
+                ->where('id', '!=', Auth::id()) // Exclude current user
+                ->select('username', 'name')
+                ->limit($limit)
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'username' => $user->username,
+                        'name' => $user->name,
+                        'display' => $user->username . ' (' . $user->name . ')'
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'usernames' => $usernames
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error searching usernames', [
+                'error' => $e->getMessage(),
+                'query' => $request->input('query'),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to search usernames'
+            ], 500);
+        }
+    }
+
     public function getFeedbacks(Request $request, string $ticket_no)
     {
         $ici = InitialCustomerInformation::where('ticket_no', $ticket_no)->firstOrFail();
@@ -835,6 +968,39 @@ class AgentController extends Controller
 
         // No Happy Call exists, ready to create
         return response()->json(['success' => true, 'message' => 'No Happy Call exists, ready to create']);
+    }
+
+    /**
+     * Process mentions in feedback message and create mention records
+     *
+     * @param Feedback $feedback
+     * @param string $message
+     * @return void
+     */
+    private function processMentions(Feedback $feedback, string $message)
+    {
+        // Find all @username patterns in the message
+        preg_match_all('/@([a-zA-Z0-9_]+)/', $message, $matches);
+
+        if (!empty($matches[1])) {
+            $usernames = array_unique($matches[1]);
+
+            foreach ($usernames as $username) {
+                // Find user by username
+                $mentionedUser = User::where('username', $username)->first();
+
+                if ($mentionedUser && $mentionedUser->id !== Auth::id()) {
+                    // Create mention record
+                    Mention::create([
+                        'feedback_id' => $feedback->id,
+                        'mentioned_user_id' => $mentionedUser->id,
+                        'mentioner_user_id' => Auth::id(),
+                        'username_mentioned' => $username,
+                        'is_read' => false,
+                    ]);
+                }
+            }
+        }
     }
 
     /**

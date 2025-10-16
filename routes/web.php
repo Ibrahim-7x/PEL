@@ -21,6 +21,13 @@ Route::post('/check-complaint-ticket', [App\Http\Controllers\AgentController::cl
 Route::post('/fetch-ticket-info', [App\Http\Controllers\AgentController::class, 'fetchTicketInfo'])->middleware('auth')->name('fetch.ticket.info');
 Route::get('/generate-ticket-number', [App\Http\Controllers\AgentController::class, 'getTicketNumber'])->middleware('auth')->name('generate.ticket.number');
 
+// Mention routes - accessible to all authenticated users
+Route::middleware('auth')->group(function () {
+    Route::get('/mentions', [AgentController::class, 'getMentions'])->name('mentions.get');
+    Route::post('/mentions/{mentionId}/read', [AgentController::class, 'markMentionAsRead'])->name('mentions.mark.read');
+    Route::get('/search-usernames', [AgentController::class, 'searchUsernames'])->name('usernames.search');
+});
+
 Route::get('/', function () {
     return view('auth.login');
 });

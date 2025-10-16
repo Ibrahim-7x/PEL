@@ -780,4 +780,242 @@
     </script>
     <script src="{{ asset('js/script.js') }}"></script>
     <script src="{{ asset('js/chat.js') }}"></script>
+
+    <!-- Mention Autocomplete Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessage = document.getElementById('chatMessage');
+            let mentionDropdown = null;
+            let currentMentionStart = -1;
+            let currentQuery = '';
+
+            // Create dropdown element
+            function createDropdown() {
+                if (mentionDropdown) return;
+
+                mentionDropdown = document.createElement('div');
+                mentionDropdown.className = 'mention-dropdown position-absolute bg-white border rounded shadow-sm';
+                mentionDropdown.style.cssText = `
+                    z-index: 1050;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    min-width: 250px;
+                    display: none;
+                `;
+                document.body.appendChild(mentionDropdown);
+            }
+
+            // Position dropdown
+            function positionDropdown() {
+                if (!mentionDropdown || !chatMessage) return;
+
+                const rect = chatMessage.getBoundingClientRect();
+
+                // Position relative to the chat input field - directly below it
+                mentionDropdown.style.left = rect.left + 'px';
+                mentionDropdown.style.top = (rect.bottom + window.scrollY + 2) + 'px';
+                mentionDropdown.style.width = rect.width + 'px';
+                mentionDropdown.style.position = 'absolute';
+            }
+
+            // Get caret coordinates (simple approximation)
+            function getCaretCoordinates(element, position) {
+                const div = document.createElement('div');
+                const style = getComputedStyle(element);
+
+                // Copy styles
+                ['fontSize', 'fontFamily', 'fontWeight', 'letterSpacing', 'wordSpacing'].forEach(prop => {
+                    div.style[prop] = style[prop];
+                });
+
+                div.style.position = 'absolute';
+                div.style.visibility = 'hidden';
+                div.style.whiteSpace = 'pre-wrap';
+                div.style.width = element.offsetWidth + 'px';
+
+                // Create text up to cursor
+                const text = element.value.substring(0, position);
+                div.textContent = text;
+
+                document.body.appendChild(div);
+                const coordinates = {
+                    left: div.offsetWidth,
+                    top: div.offsetHeight - 20
+                };
+                document.body.removeChild(div);
+
+                return coordinates;
+            }
+
+            // Show dropdown with suggestions
+            function showSuggestions(suggestions) {
+                if (!mentionDropdown) createDropdown();
+
+                mentionDropdown.innerHTML = '';
+
+                if (suggestions.length === 0) {
+                    mentionDropdown.style.display = 'none';
+                    return;
+                }
+
+                suggestions.forEach((user, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'mention-item px-3 py-2 cursor-pointer';
+                    item.style.cssText = 'cursor: pointer; border-bottom: 1px solid #f0f0f0;';
+                    item.innerHTML = `<strong>@${user.username}</strong> (${user.name})`;
+
+                    item.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = '#f8f9fa';
+                    });
+
+                    item.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = '';
+                    });
+
+                    item.addEventListener('click', function() {
+                        insertMention(user.username);
+                    });
+
+                    mentionDropdown.appendChild(item);
+                });
+
+                positionDropdown();
+                mentionDropdown.style.display = 'block';
+            }
+
+            // Hide dropdown
+            function hideDropdown() {
+                if (mentionDropdown) {
+                    mentionDropdown.style.display = 'none';
+                }
+            }
+
+            // Insert mention into textarea
+            function insertMention(username) {
+                if (currentMentionStart === -1) return;
+
+                const beforeMention = chatMessage.value.substring(0, currentMentionStart);
+                const afterMention = chatMessage.value.substring(chatMessage.selectionStart);
+                const mention = '@' + username + ' ';
+
+                chatMessage.value = beforeMention + mention + afterMention;
+                chatMessage.selectionStart = chatMessage.selectionEnd = beforeMention.length + mention.length;
+
+                hideDropdown();
+                currentMentionStart = -1;
+                currentQuery = '';
+            }
+
+            // Search for usernames
+            function searchUsernames(query) {
+                if (query.length === 0) {
+                    hideDropdown();
+                    return;
+                }
+
+                fetch('{{ route("usernames.search") }}?query=' + encodeURIComponent(query), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showSuggestions(data.usernames);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching usernames:', error);
+                    hideDropdown();
+                });
+            }
+
+            // Handle input events
+            chatMessage.addEventListener('input', function(e) {
+                const value = this.value;
+                const cursorPos = this.selectionStart;
+
+                // Find if we're in a mention
+                const beforeCursor = value.substring(0, cursorPos);
+                const atIndex = beforeCursor.lastIndexOf('@');
+
+                if (atIndex !== -1) {
+                    const afterAt = beforeCursor.substring(atIndex + 1);
+                    const spaceIndex = afterAt.indexOf(' ');
+
+                    // Check if we're still in the mention (no space after @)
+                    if (spaceIndex === -1) {
+                        currentMentionStart = atIndex;
+                        currentQuery = afterAt;
+                        searchUsernames(currentQuery);
+                        return;
+                    }
+                }
+
+                // Not in a mention
+                hideDropdown();
+                currentMentionStart = -1;
+                currentQuery = '';
+            });
+
+            // Handle keydown for navigation
+            chatMessage.addEventListener('keydown', function(e) {
+                if (!mentionDropdown || mentionDropdown.style.display === 'none') return;
+
+                const items = mentionDropdown.querySelectorAll('.mention-item');
+                let activeItem = mentionDropdown.querySelector('.mention-active');
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (!activeItem) {
+                        items[0].classList.add('mention-active');
+                        items[0].style.backgroundColor = '#e3f2fd';
+                    } else {
+                        activeItem.classList.remove('mention-active');
+                        activeItem.style.backgroundColor = '';
+                        const nextItem = activeItem.nextElementSibling || items[0];
+                        nextItem.classList.add('mention-active');
+                        nextItem.style.backgroundColor = '#e3f2fd';
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (!activeItem) {
+                        items[items.length - 1].classList.add('mention-active');
+                        items[items.length - 1].style.backgroundColor = '#e3f2fd';
+                    } else {
+                        activeItem.classList.remove('mention-active');
+                        activeItem.style.backgroundColor = '';
+                        const prevItem = activeItem.previousElementSibling || items[items.length - 1];
+                        prevItem.classList.add('mention-active');
+                        prevItem.style.backgroundColor = '#e3f2fd';
+                    }
+                } else if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    if (activeItem) {
+                        const username = activeItem.textContent.split(' ')[0].substring(1); // Remove @ and get username
+                        insertMention(username);
+                    }
+                } else if (e.key === 'Escape') {
+                    hideDropdown();
+                }
+            });
+
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!chatMessage.contains(e.target) && (!mentionDropdown || !mentionDropdown.contains(e.target))) {
+                    hideDropdown();
+                }
+            });
+
+            // Hide dropdown on blur
+            chatMessage.addEventListener('blur', function() {
+                // Delay hiding to allow for dropdown clicks
+                setTimeout(() => {
+                    hideDropdown();
+                }, 150);
+            });
+        });
+    </script>
 @endsection
