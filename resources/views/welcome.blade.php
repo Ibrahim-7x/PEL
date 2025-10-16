@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Dashboard')
+
 @section('content')
 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
     <h1 style="color: #2c3e50; font-size: 2rem; margin-bottom: 10px;">Welcome to PEL-Abacus</h1>
@@ -31,7 +33,7 @@
             </div>
             <div id="noMentionsMessage" class="text-center text-muted py-4">
                 <i class="bi bi-bell-slash display-4 mb-3"></i>
-                <p class="mb-0">No new mentions</p>
+                <p class="mb-0">No new Notifcations</p>
             </div>
         </div>
     </div>
@@ -155,8 +157,8 @@ document.addEventListener('DOMContentLoaded', function() {
         mentionNotifications.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Check for mentions every 30 seconds
-    mentionCheckInterval = setInterval(checkMentions, 30000);
+    // Check for mentions every 60 seconds
+    mentionCheckInterval = setInterval(checkMentions, 60000);
 
     // Initial check
     checkMentions();

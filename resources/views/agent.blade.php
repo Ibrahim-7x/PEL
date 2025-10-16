@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Agent')
+@section('title', 'Regristration Form')
 
 @section('meta')
     @vite('resources/css/agent.css')

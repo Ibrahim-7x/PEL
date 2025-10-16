@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Export Happy Call')
+
 @section('title', 'Feedback Export')
 
 @section('content')
