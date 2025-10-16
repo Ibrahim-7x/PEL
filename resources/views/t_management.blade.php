@@ -358,7 +358,6 @@
                                     statusContent.innerHTML = `
                                         <strong>📋 Ticket Found</strong><br>
                                         <small>Ticket <strong>${ticketData.ticket_no}</strong> found for this complaint number.</small><br>
-                                        <small>Ready for chat and tracking.</small>
                                     `;
                                     statusInfo.style.display = 'block';
                                 }
