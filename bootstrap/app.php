@@ -30,6 +30,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'search-usernames',
         ]);
     })
+    ->withSchedule(function ($schedule) {
+        // Schedule the mention expiration command to run daily
+        $schedule->command('mentions:expire-old')
+            ->daily()
+            ->description('Expire old mention notifications older than 1 day');
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

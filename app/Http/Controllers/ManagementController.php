@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Mention;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 class ManagementController extends Controller
 {
@@ -223,6 +224,130 @@ class ManagementController extends Controller
             });
 
         return response()->json($feedbacks);
+    }
+
+    /**
+     * Get unread mentions for the current user (Management)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMentions(Request $request)
+    {
+        try {
+            // Get mentions that are either unread OR were created within the last 24 hours
+            $mentions = Mention::with(['feedback.ici', 'mentionerUser'])
+                ->where('mentioned_user_id', Auth::id())
+                ->where(function ($query) {
+                    $query->where('is_read', false)
+                          ->orWhere('created_at', '>=', now()->subDay());
+                })
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($mention) {
+                    return [
+                        'id' => $mention->id,
+                        'feedback_id' => $mention->feedback_id,
+                        'ticket_no' => $mention->feedback->ici->ticket_no,
+                        'mentioner_name' => $mention->mentionerUser->name,
+                        'message' => Str::limit($mention->feedback->message, 100),
+                        'created_at' => $mention->created_at,
+                        'is_read' => $mention->is_read,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'mentions' => $mentions,
+                'count' => $mentions->count()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching mentions', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to fetch mentions'
+            ], 500);
+        }
+    }
+
+    /**
+     * Mark mention as read (Management)
+     *
+     * @param Request $request
+     * @param int $mentionId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function markMentionAsRead(Request $request, $mentionId)
+    {
+        try {
+            $mention = Mention::where('id', $mentionId)
+                ->where('mentioned_user_id', Auth::id())
+                ->firstOrFail();
+
+            $mention->update(['is_read' => true]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mention marked as read'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error marking mention as read', [
+                'error' => $e->getMessage(),
+                'mention_id' => $mentionId,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to mark mention as read'
+            ], 500);
+        }
+    }
+
+    /**
+     * Search usernames for autocomplete (Management)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function searchUsernames(Request $request)
+    {
+        try {
+            $query = $request->get('query', '');
+            $limit = 10;
+
+            $users = User::where('username', 'like', $query . '%')
+                ->where('id', '!=', Auth::id())
+                ->limit($limit)
+                ->get(['id', 'username', 'name'])
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'username' => $user->username,
+                        'name' => $user->name,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'usernames' => $users
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error searching usernames', [
+                'error' => $e->getMessage(),
+                'query' => $request->get('query'),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to search usernames'
+            ], 500);
+        }
     }
 
     /**

@@ -730,9 +730,13 @@ class AgentController extends Controller
     public function getMentions(Request $request)
     {
         try {
+            // Get mentions that are either unread OR were created within the last 24 hours
             $mentions = Mention::with(['feedback.ici', 'mentionerUser'])
                 ->where('mentioned_user_id', Auth::id())
-                ->where('is_read', false)
+                ->where(function ($query) {
+                    $query->where('is_read', false)
+                          ->orWhere('created_at', '>=', now()->subDay());
+                })
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($mention) {
@@ -742,7 +746,8 @@ class AgentController extends Controller
                         'ticket_no' => $mention->feedback->ici->ticket_no,
                         'mentioner_name' => $mention->mentionerUser->name,
                         'message' => Str::limit($mention->feedback->message, 100),
-                        'created_at' => $mention->created_at->diffForHumans(),
+                        'created_at' => $mention->created_at,
+                        'is_read' => $mention->is_read,
                     ];
                 });
 
