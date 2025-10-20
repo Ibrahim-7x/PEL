@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('reason_of_escalation', function (Blueprint $table) {
             $table->id();
             $table->string('reason');
+            $table->timestamps();
         });
     }
 

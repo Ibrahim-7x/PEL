@@ -13,9 +13,11 @@ return new class extends Migration
     {
         Schema::create('service_center', function (Blueprint $table) {
             $table->id();
-            $table->string('sc_name'); // e.g., All, BWP, DIK, etc.
-            $table->unsignedBigInteger('ici_id');
-            $table->foreign('ici_id')->references('id')->on('initial_customer_information')->onDelete('cascade');
+            $table->string('coms_sc');
+            $table->string('sc');
+            $table->string('service_center');
+            $table->string('zone');
+            $table->timestamps();
         });
     }
 

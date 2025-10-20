@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('initial_customer_information', function (Blueprint $table) {
             $table->id();
             $table->string('ticket_no')->unique();
-            $table->date('complaint_escalation_date');
+            $table->string('complaint_number')->unique();
+            $table->timestamp('complaint_escalation_date');
             $table->string('agent_name');
             $table->text('voice_of_customer');
             $table->integer('aging');

@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('feedback', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('ici_id');
             $table->string('name');
             $table->string('role');
             $table->text('message');
+            $table->unsignedBigInteger('ici_id');
             $table->timestamps();
 
             $table->foreign('ici_id')->references('id')->on('initial_customer_information')->onDelete('cascade');

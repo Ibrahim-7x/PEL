@@ -17,8 +17,8 @@ class SessionTimeoutMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip session timeout for heartbeat and other lightweight routes
-        if ($request->is('heartbeat') || $request->is('favicon.ico')) {
+        // Skip session timeout for other lightweight routes
+        if ($request->is('favicon.ico')) {
             return $next($request);
         }
 

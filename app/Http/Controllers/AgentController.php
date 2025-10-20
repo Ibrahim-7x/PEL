@@ -14,7 +14,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreHappyCallStatusRequest;
 use App\Models\ServiceCenter;
 use App\Models\ComplaintCategory;
-use App\Models\CaseStatus;
 use App\Models\EscalationReason;
 use App\Models\InitialCustomerInformation;
 use App\Models\Feedback;
@@ -67,7 +66,6 @@ class AgentController extends Controller
     {
         $serviceCenters = ServiceCenter::orderBy('sc_name')->get();
         $complaintCategory = ComplaintCategory::orderBy('category_name')->get();
-        $caseStatus = CaseStatus::orderBy('status')->get();
         $reasonofEscalation = EscalationReason::orderBy('reason')->get();
         $delayReason = DelayReason::orderBy('reason')->get();
 
@@ -88,7 +86,6 @@ class AgentController extends Controller
         return view('t_agent', compact(
             'serviceCenters',
             'complaintCategory',
-            'caseStatus',
             'reasonofEscalation',
             'ici',
             'feedbacks',
@@ -358,8 +355,8 @@ class AgentController extends Controller
         }
 
         try {
-            // Call external COMS API - try with query parameter as shown in Postman
-            $response = Http::timeout(10)->post(
+            // Call external COMS API - use POST request as originally intended
+            $response = Http::timeout(10)->withoutVerifying()->post(
                 'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo)
             );
 
@@ -393,7 +390,9 @@ class AgentController extends Controller
                 Log::error('COMS API error response', [
                     'status' => $response->status(),
                     'body' => $response->body(),
-                    'complaint_no' => $complaintNo
+                    'complaint_no' => $complaintNo,
+                    'request_url' => $response->effectiveUri(),
+                    'request_method' => 'POST'
                 ]);
 
                 return response()->json([
@@ -402,6 +401,12 @@ class AgentController extends Controller
                 ], 502);
             }
         } catch (\Exception $e) {
+            Log::error('COMS API connection error', [
+                'error' => $e->getMessage(),
+                'complaint_no' => $complaintNo,
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'error' => 'Unable to connect to COMS API. Please try again later.',
                 'details' => $e->getMessage()

@@ -39,10 +39,6 @@ Route::get('/welcome', function () {
 Route::get('/profile', [ProfileController::class, 'index'])->middleware('auth')->name('profile');
 Route::post('/profile/update-password', [ProfileController::class, 'updatePassword'])->middleware('auth')->name('profile.update-password');
 
-// Heartbeat route for session management (lightweight, no content)
-Route::match(['get', 'post'], '/heartbeat', function() {
-    return response()->noContent(); // 204 No Content response
-})->middleware('auth')->name('heartbeat');
 
 // Agent routes
 Route::middleware(['auth', 'role:Agent'])->group(function () {

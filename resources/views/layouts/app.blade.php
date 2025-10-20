@@ -315,8 +315,6 @@ function redirectToLogin(url) {
 
 // Activity tracker to reset session timeout (optimized)
 let lastActivity = Date.now();
-let lastHeartbeat = 0;
-const HEARTBEAT_THROTTLE = 2 * 60 * 1000; // 2 minutes minimum between heartbeats
 let activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
 
 activityEvents.forEach(event => {
@@ -326,22 +324,6 @@ activityEvents.forEach(event => {
         sessionStorage.setItem('lastActivity', lastActivity.toString());
     }, { passive: true });
 });
-
-// Check activity periodically (every 5 minutes) and send heartbeat if active
-setInterval(function() {
-    const now = Date.now();
-    const timeSinceLastActivity = now - lastActivity;
-    const timeSinceLastHeartbeat = now - lastHeartbeat;
-
-    // If user was active in the last 10 minutes and we haven't sent a heartbeat recently
-    if (timeSinceLastActivity < 10 * 60 * 1000 && timeSinceLastHeartbeat > HEARTBEAT_THROTTLE) {
-        // Send heartbeat to a dedicated endpoint (not profile)
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon('{{ url("/heartbeat") }}', new FormData());
-            lastHeartbeat = now;
-        }
-    }
-}, 5 * 60 * 1000); // Check every 5 minutes
 </script>
 
 </body>

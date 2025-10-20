@@ -1,19 +1,19 @@
 # PEL-Abacus Session Timeout Configuration
 
 ## Overview
-The PEL-Abacus application now has a 4-hour session timeout with automatic logout functionality and user-friendly warnings.
+The PEL-Abacus application now has a 1-hour session timeout with automatic logout functionality and user-friendly warnings.
 
 ## Configuration
 
 ### Session Lifetime
-- **Duration**: 4 hours (240 minutes)
-- **Configuration**: Set in `.env` file as `SESSION_LIFETIME=240`
+- **Duration**: 1 hour (60 minutes)
+- **Configuration**: Set in `.env` file as `SESSION_LIFETIME=60`
 - **Location**: `config/session.php` reads from environment variable
 
 ### Features Implemented
 
 #### 1. Automatic Session Timeout
-- Sessions automatically expire after 4 hours of inactivity
+- Sessions automatically expire after 1 hour of inactivity
 - Users are automatically logged out and redirected to login page
 - Works for both regular page requests and AJAX calls
 
@@ -32,26 +32,28 @@ The PEL-Abacus application now has a 4-hour session timeout with automatic logou
 - Tracks user activity (mouse, keyboard, touch events)
 - Resets session timer on any user interaction
 - Uses efficient event listeners with passive mode
+- No heartbeat mechanism - session timeout is based on server-side request activity
 
 ## Files Modified/Created
 
 ### Configuration Files
-- `.env` - Updated SESSION_LIFETIME to 240 minutes
+- `.env` - Updated SESSION_LIFETIME to 60 minutes
 - `config/session.php` - Session configuration (uses env variable)
 
 ### Backend Files
 - `app/Http/Middleware/SessionTimeoutMiddleware.php` - Main session timeout logic
 - `bootstrap/app.php` - Middleware registration
 - `app/Http/Controllers/ProfileController.php` - Password change functionality
+- Removed: `routes/web.php` - Heartbeat route removed
 
 ### Frontend Files
-- `resources/views/layouts/app.blade.php` - Session warning display and AJAX handling
+- `resources/views/layouts/app.blade.php` - Session warning display and AJAX handling (heartbeat JavaScript removed)
 - `resources/views/profile.blade.php` - Password change form
 
 ## How It Works
 
 ### Session Flow
-1. User logs in → Session starts with 4-hour timer
+1. User logs in → Session starts with 1-hour timer
 2. User activity → Timer resets on each interaction
 3. 15 minutes before expiry → Warning appears
 4. At expiry → Automatic logout and redirect
@@ -60,8 +62,9 @@ The PEL-Abacus application now has a 4-hour session timeout with automatic logou
 ### Security Features
 - **CSRF Protection**: All requests protected with tokens
 - **Secure Logout**: Session flushed and regenerated on timeout
-- **Activity Monitoring**: Real-time activity tracking
+- **Activity Monitoring**: Real-time activity tracking based on actual requests
 - **AJAX Security**: Proper handling of expired sessions in AJAX calls
+- **Simplified Architecture**: Removed heartbeat mechanism for cleaner session management
 
 ### User Experience
 - **Non-intrusive Warnings**: Session warnings don't interrupt workflow
@@ -73,10 +76,10 @@ The PEL-Abacus application now has a 4-hour session timeout with automatic logou
 
 ### Manual Testing
 1. Login to the application
-2. Wait for session warning (3 hours 45 minutes)
+2. Wait for session warning (45 minutes)
 3. Verify warning appears with correct countdown
 4. Continue using app to reset timer
-5. Wait for automatic logout (4 hours total)
+5. Wait for automatic logout (1 hour total)
 6. Verify redirect to login page
 
 ### AJAX Testing
@@ -89,7 +92,7 @@ The PEL-Abacus application now has a 4-hour session timeout with automatic logou
 ### Change Session Duration
 Edit `.env` file:
 ```env
-SESSION_LIFETIME=240  # Change to desired minutes
+SESSION_LIFETIME=60  # Change to desired minutes
 ```
 
 ### Adjust Warning Time
@@ -135,6 +138,7 @@ Check logs in `storage/logs/laravel.log` for session timeout events.
 - **Efficient Storage**: Session data stored in configured driver (database/file)
 - **Optimized Queries**: Minimal database impact for session management
 - **Browser Compatibility**: Works across all modern browsers
+- **Simplified Client-Side**: Removed periodic heartbeat requests reducing network traffic
 
 ---
 

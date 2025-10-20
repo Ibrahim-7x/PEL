@@ -13,20 +13,32 @@ class DelayReasonSeeder extends Seeder
      */
     public function run(): void
     {
-        $delayReasons = [
+        $delayReason = [
+            'Delay complaint attending by SC',
+            'Delay complaint resolution by SC',
+            'Delay at Customer end',
+            'Delay Approval Sales Dept',
+            'Customer understanding Issue (Policy)',
+            'Re-Do Jobs',
+            'Premature product failure',
+            'Incomplete documentation provided by customer',
             'Parts not available',
-            'Technician not available',
+            'RTW case not proper follow up',
             'Customer not available',
-            'Weather conditions',
-            'Transportation issues',
-            'Supplier delay',
-            'Technical complexity',
-            'Documentation issues',
-            'Approval pending',
-            'Other'
+            'Understanding issue in customer unit by Technician',
+            'Customer satisfaction Issue',
+            'Part to attend delay',
+            'Late parts delivery by courier',
+            'Load Shedding issue at customer premises',
+            'Local Market repairing Delay',
+            'Repeated Parts Failure',
+            'SC Estimate is High as compared to Local Market',
+            'Technician Soft Skills',
+            'Wrong cancellation done at SC end',
+            'Poor Product Quality',
         ];
 
-        foreach ($delayReasons as $reason) {
+        foreach ($delayReason as $reason) {
             DelayReason::create(['reason' => $reason]);
         }
     }
