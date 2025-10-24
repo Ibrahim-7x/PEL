@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </td>
                 <td class="align-middle">
                     <div>
-                        <span class="badge bg-info">${mention.ticket_no}</span>
+                        <span class="badge bg-info">${mention.ticket_number}</span>
                         <br>
                         <small class="text-muted">${formattedDate}</small>
                     </div>
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </td>
                 <td class="align-middle text-center">
-                    <button class="btn btn-primary btn-sm open-mention-btn" data-mention-id="${mention.id}" data-ticket-no="${mention.ticket_no}">
+                    <button class="btn btn-primary btn-sm open-mention-btn" data-mention-id="${mention.id}" data-ticket-no="${mention.ticket_number}">
                         <i class="bi bi-eye me-1"></i>Open
                     </button>
                 </td>
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }).then(() => {
                     // Redirect to the ticket page
                     const role = '{{ auth()->user()->role }}';
-                    window.location.href = `{{ url('/') }}/${role === 'Management' ? 't-management' : 't-agent'}?ticket_no=${ticketNo}`;
+                    window.location.href = `{{ url('/') }}/${role === 'Management' ? 't-management' : 't-agent'}?ticket_number=${ticketNo}`;
                 });
             });
         });

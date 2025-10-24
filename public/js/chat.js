@@ -236,7 +236,7 @@ if (!window.ticketSearchFormListenerAttached) {
 
             const form = e.target;
             const formData = new FormData(form);
-            const rawTicketNo = (formData.get('ticket_no') || '').trim();
+            const rawTicketNo = (formData.get('ticket_number') || '').trim();
             if (!rawTicketNo) {
                 alert('Please enter Ticket No');
                 return;

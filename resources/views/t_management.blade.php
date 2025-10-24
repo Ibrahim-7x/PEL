@@ -32,7 +32,7 @@
                                 <label class="form-label fw-semibold">Complaint #</label>
                                 <div class="input-group">
                                     <input type="text" id="complaint_number" name="complaint_number" class="form-control"
-                                        placeholder="000000-000000" value="{{ $ici->complaint_number ?? '' }}">
+                                        placeholder="000000-000000" value="{{ $ici->coms->complaint_number ?? '' }}">
                                     <button type="button" id="searchComplaintBtn" class="btn btn-primary">
                                         <i class="bi bi-search"></i>
                                     </button>
@@ -104,7 +104,7 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Ticket No</label>
-                        <input type="text" name="ticket_no" id="ticket_no" class="form-control" readonly value="{{ $ici->ticket_no ?? '' }}">
+                        <input type="text" name="ticket_number" id="ticket_number" class="form-control" readonly value="{{ $ici->ticket_number ?? '' }}">
                     </div>
 
                     <div class="col-md-6">
@@ -114,7 +114,7 @@
                     <div class="col-md-6">
                         <label for="complaint_escalation_date" class="form-label fw-semibold">Complaint Escalation Date</label>
                         <input type="date" class="form-control" name="complaint_escalation_date"
-                            id="complaint_escalation_date" readonly value="{{ $ici ? \Carbon\Carbon::parse($ici->complaint_escalation_date)->format('Y-m-d') : '' }}">
+                            id="complaint_escalation_date" readonly value="{{ $ici && $ici->complaint_escalation_date ? \Carbon\Carbon::parse($ici->complaint_escalation_date)->format('Y-m-d') : '' }}">
                     </div>
                     <div class="col-md-3">
                         <label for="case_status" class="form-label fw-semibold">Case Status</label>
@@ -154,14 +154,14 @@
             @endphp
             <div id="chatSection" style="{{ $shouldShowChat ? '' : 'display: none;' }}">
                 {{-- Config for chat.js (used when chatArea is updated via AJAX) --}}
-                <div id="chatConfig" data-feedback-list-url="{{ $ici ? route('management.feedback.list', $ici->ticket_no) : '' }}"
+                <div id="chatConfig" data-feedback-list-url="{{ $ici ? route('management.feedback.list', $ici->ticket_number) : '' }}"
                     data-current-user="{{ auth()->user()->name }}" data-agent-index-url="{{ route('t_management.index') }}"
                     data-last-feedback-id="{{ $feedbacks->last()->id ?? 0 }}"></div>
 
                 {{-- Chat header --}}
                 <div class="d-flex align-items-center mb-3 mt-4">
                     <h4 class="mb-0">
-                        Ticket <span class="badge rounded-pill text-bg-primary" id="ticketBadge">{{ $ici->ticket_no ?? '' }}</span>
+                        Ticket <span class="badge rounded-pill text-bg-primary" id="ticketBadge">{{ $ici->ticket_number ?? '' }}</span>
                     </h4>
                 </div>
 
@@ -196,7 +196,7 @@
                     {{-- Chat input --}}
                     <div class="card-footer card-footer-grey">
                         @php
-                            $chatTicketNo = $ici ? $ici->ticket_no : null;
+                            $chatTicketNo = $ici ? $ici->ticket_number : null;
                         @endphp
                         <form id="chatForm" action="{{ $chatTicketNo ? route('management.feedback.store', $chatTicketNo) : '#' }}" method="POST"
                             class="chat-input-form">
@@ -289,6 +289,7 @@
                     this.disabled = true;
 
                     // First, fetch COMS data
+                    console.log('Fetching COMS data for complaint number:', complaintNumber);
                     fetch("{{ route('management.fetch.coms') }}", {
                         method: "POST",
                         headers: {
@@ -300,13 +301,18 @@
                             complaint_number: complaintNumber
                         })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        console.log('COMS API response status:', response.status);
+                        return response.json();
+                    })
                     .then(data => {
+                        console.log('COMS API response data:', data);
                         // Reset button state
                         document.getElementById("searchComplaintBtn").innerHTML = '<i class="bi bi-search"></i>';
                         document.getElementById("searchComplaintBtn").disabled = false;
 
                         if (data.error) {
+                            console.error('COMS API error:', data.error);
                             showErrorMessage('COMS Error: ' + data.error);
                             return;
                         }
@@ -329,6 +335,7 @@
                         if (data.WorkDone) document.getElementById('workdone').value = data.WorkDone;
 
                         // Now fetch ticket information (read-only, no updates)
+                        console.log('Fetching ticket info for complaint number:', complaintNumber);
                         return fetch("{{ route('management.fetch.ticket.info') }}", {
                             method: "POST",
                             headers: {
@@ -341,12 +348,16 @@
                             })
                         });
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        console.log('Ticket info API response status:', response.status);
+                        return response.json();
+                    })
                     .then(ticketData => {
+                        console.log('Ticket info API response data:', ticketData);
                         if (ticketData.success) {
                             // Set the ticket number
-                            const ticketInput = document.getElementById('ticket_no');
-                            ticketInput.value = ticketData.ticket_no;
+                            const ticketInput = document.getElementById('ticket_number');
+                            ticketInput.value = ticketData.ticket_number;
 
                             // If ticket exists, populate form with existing data (read-only)
                             if (ticketData.exists && ticketData.ticket_data) {
@@ -357,7 +368,7 @@
                                     statusInfo.className = 'alert alert-info';
                                     statusContent.innerHTML = `
                                         <strong>📋 Ticket Found</strong><br>
-                                        <small>Ticket <strong>${ticketData.ticket_no}</strong> found for this complaint number.</small><br>
+                                        <small>Ticket <strong>${ticketData.ticket_number}</strong> found for this complaint number.</small><br>
                                     `;
                                     statusInfo.style.display = 'block';
                                 }
@@ -408,13 +419,13 @@
                             // Update ticket badge
                             const ticketBadge = document.getElementById("ticketBadge");
                             if (ticketBadge) {
-                                ticketBadge.textContent = ticketData.ticket_no;
+                                ticketBadge.textContent = ticketData.ticket_number;
                             }
 
                             // Update chat form action
                             const chatForm = document.getElementById("chatForm");
                             if (chatForm) {
-                                chatForm.action = "{{ url('/home-management/ticket') }}/" + ticketData.ticket_no + "/feedback";
+                                chatForm.action = "{{ url('/home-management/ticket') }}/" + ticketData.ticket_number + "/feedback";
                             }
 
                             // Enable chat input
@@ -436,9 +447,14 @@
                             }
 
                             // Load feedbacks
-                            fetch("{{ url('/home-management/ticket') }}/" + ticketData.ticket_no + "/feedbacks")
-                                .then(response => response.json())
+                            console.log('Loading feedbacks for ticket:', ticketData.ticket_number);
+                            fetch("{{ url('/home-management/ticket') }}/" + ticketData.ticket_number + "/feedbacks")
+                                .then(response => {
+                                    console.log('Feedbacks API response status:', response.status);
+                                    return response.json();
+                                })
                                 .then(feedbacks => {
+                                    console.log('Feedbacks data:', feedbacks);
                                     const chatBox = document.getElementById("chatScrollArea");
                                     if (chatBox) {
                                         chatBox.innerHTML = '';
@@ -468,16 +484,17 @@
                                     }
                                 })
                                 .catch(error => {
+                                    console.error('Error loading feedbacks:', error);
                                     if (chatScrollArea) {
                                         chatScrollArea.innerHTML = '<p class="text-center text-muted my-5">Error loading chat messages.</p>';
                                     }
                                 });
                         } else {
                             // Handle new ticket creation
-                            if (ticketData.is_new_ticket && ticketData.ticket_no) {
+                            if (ticketData.is_new_ticket && ticketData.ticket_number) {
                                 // Set the new ticket number
-                                const ticketInput = document.getElementById('ticket_no');
-                                ticketInput.value = ticketData.ticket_no;
+                                const ticketInput = document.getElementById('ticket_number');
+                                ticketInput.value = ticketData.ticket_number;
 
                                 // Show success message for new ticket
 
@@ -490,13 +507,13 @@
                                 // Update ticket badge
                                 const ticketBadge = document.getElementById("ticketBadge");
                                 if (ticketBadge) {
-                                    ticketBadge.textContent = ticketData.ticket_no;
+                                    ticketBadge.textContent = ticketData.ticket_number;
                                 }
 
                                 // Update chat form action
                                 const chatForm = document.getElementById("chatForm");
                                 if (chatForm) {
-                                    chatForm.action = "{{ url('/home-management/ticket') }}/" + ticketData.ticket_no + "/feedback";
+                                    chatForm.action = "{{ url('/home-management/ticket') }}/" + ticketData.ticket_number + "/feedback";
                                 }
 
                                 // Enable chat input
@@ -570,7 +587,7 @@
         // Initialize window variables for chat functionality
         window.agentIndexUrl = "{{ route('t_management.index') }}";
         @if (isset($ici) && $ici)
-            window.feedbackListUrl = "{{ route('management.feedback.list', $ici->ticket_no) }}";
+            window.feedbackListUrl = "{{ route('management.feedback.list', $ici->ticket_number) }}";
             window.currentUser = "{{ auth()->user()->name }}";
         @endif
     </script>

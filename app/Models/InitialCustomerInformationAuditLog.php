@@ -10,7 +10,7 @@ class InitialCustomerInformationAuditLog extends Model
 
     protected $fillable = [
         'complaint_number',
-        'ticket_no',
+        'ticket_number',
         'action',
         'escalation_level',
         'old_values',
@@ -51,7 +51,7 @@ class InitialCustomerInformationAuditLog extends Model
      */
     public function scopeByTicket($query, $ticketNo)
     {
-        return $query->where('ticket_no', $ticketNo);
+        return $query->where('ticket_number', $ticketNo);
     }
 
     /**

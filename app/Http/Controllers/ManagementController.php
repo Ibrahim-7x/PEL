@@ -33,8 +33,8 @@ class ManagementController extends Controller
         $ici = null;
         $feedbacks = collect();
 
-        if ($request->filled('ticket_no')) {
-            $ici = InitialCustomerInformation::where('ticket_no', $request->ticket_no)->first();
+        if ($request->filled('ticket_number')) {
+            $ici = InitialCustomerInformation::where('ticket_number', $request->ticket_number)->first();
 
             if ($ici) {
                 $feedbacks = Feedback::where('ici_id', $ici->id)
@@ -50,14 +50,14 @@ class ManagementController extends Controller
     }
 
 
-    public function storeFeedback(Request $request, string $ticket_no)
+    public function storeFeedback(Request $request, string $ticket_number)
     {
         try {
             $request->validate([
                 'message' => 'required|string|max:2000',
             ]);
 
-            $ici = InitialCustomerInformation::where('ticket_no', $ticket_no)->firstOrFail();
+            $ici = InitialCustomerInformation::where('ticket_number', $ticket_number)->firstOrFail();
 
             $feedback = Feedback::create([
                 'ici_id'  => $ici->id,
@@ -81,7 +81,7 @@ class ManagementController extends Controller
 
             // Fallback for normal (non-AJAX) submits
             return redirect()
-                ->route('management.ticket', $ticket_no)
+                ->route('management.ticket', $ticket_number)
                 ->with('success', 'Feedback added!');
         } catch (\Throwable $e) {
             if ($request->ajax()) {
@@ -102,13 +102,19 @@ class ManagementController extends Controller
             return response()->json(['error' => 'Complaint number is required'], 400);
         }
 
-        \Log::info('ManagementController fetchComsData called', ['user_role' => auth()->user()->role ?? 'none', 'complaint_no' => $complaintNo]);
+        \Log::info('ManagementController fetchComsData called', [
+            'user_role' => auth()->user()->role ?? 'none',
+            'complaint_no' => $complaintNo,
+            'request_all' => $request->all()
+        ]);
 
         try {
             // Call external COMS API - try with query parameter as shown in Postman
-            $response = Http::timeout(10)->post(
-                'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo)
-            );
+            $url = 'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo);
+            \Log::info('ManagementController COMS API call', ['url' => $url]);
+
+            // Disable SSL verification for development/testing
+            $response = Http::timeout(10)->withoutVerifying()->post($url);
 
             if ($response->successful()) {
                 try {
@@ -118,8 +124,16 @@ class ManagementController extends Controller
                 }
 
                 if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
+                    \Log::info('ManagementController COMS API success', [
+                        'complaint_no' => $complaintNo,
+                        'data' => $data['ComplaintDetails'][0]
+                    ]);
                     return response()->json($data['ComplaintDetails'][0]);
                 } else {
+                    \Log::warning('ManagementController COMS API invalid response', [
+                        'complaint_no' => $complaintNo,
+                        'data' => $data
+                    ]);
                     return response()->json(['error' => 'Complaint not found or invalid response'], 404);
                 }
             } else {
@@ -161,9 +175,36 @@ class ManagementController extends Controller
         try {
             $complaintNumber = $request->complaint_number;
 
+            \Log::info('ManagementController searchTicket called', [
+                'complaint_number' => $complaintNumber,
+                'request_all' => $request->all(),
+                'user_role' => auth()->user()->role ?? 'none'
+            ]);
+
+            // Debug: Check all complaint numbers in database
+            $allRecords = \DB::table('initial_customer_information')
+                            ->join('coms', 'initial_customer_information.complaint_id', '=', 'coms.id')
+                            ->select('coms.complaint_number', 'initial_customer_information.ticket_number')
+                            ->get();
+
+            \Log::info('ManagementController searchTicket - all records', [
+                'total_records' => $allRecords->count(),
+                'all_complaint_numbers' => $allRecords->pluck('complaint_number')->toArray(),
+                'searching_for' => $complaintNumber
+            ]);
+
             $record = \DB::table('initial_customer_information')
-                        ->where('complaint_number', $complaintNumber)
+                        ->join('coms', 'initial_customer_information.complaint_id', '=', 'coms.id')
+                        ->where('coms.complaint_number', $complaintNumber)
+                        ->select('initial_customer_information.*', 'coms.complaint_number')
                         ->first();
+
+            \Log::info('ManagementController searchTicket result', [
+                'complaint_number' => $complaintNumber,
+                'record_found' => $record ? true : false,
+                'record_data' => $record,
+                'complaint_id' => $record ? $record->complaint_id : null
+            ]);
 
             if (!$record) {
                 return response()->json(['error' => 'Ticket not found'], 404);
@@ -171,7 +212,6 @@ class ManagementController extends Controller
 
             // Calculate aging = today - escalation_date
             $today = now();
-            $complaintDate = \Carbon\Carbon::parse($record->complaint_escalation_date);
             $aging = null;
             if (!empty($record->complaint_escalation_date)) {
                 $aging = round(
@@ -182,7 +222,7 @@ class ManagementController extends Controller
             return response()->json([
                 'success' => true,
                 'exists' => true,
-                'ticket_no' => $record->ticket_no,
+                'ticket_number' => $record->ticket_number,
                 'ticket_data' => [
                     'service_center' => $record->service_center,
                     'complaint_escalation_date' => $record->complaint_escalation_date
@@ -206,9 +246,9 @@ class ManagementController extends Controller
     }
 
 
-    public function getFeedbacks(Request $request, string $ticket_no)
+    public function getFeedbacks(Request $request, string $ticket_number)
     {
-        $ici = InitialCustomerInformation::where('ticket_no', $ticket_no)->firstOrFail();
+        $ici = InitialCustomerInformation::where('ticket_number', $ticket_number)->firstOrFail();
 
         $feedbacks = Feedback::where('ici_id', $ici->id)
             ->orderBy('created_at', 'asc')
@@ -248,7 +288,7 @@ class ManagementController extends Controller
                     return [
                         'id' => $mention->id,
                         'feedback_id' => $mention->feedback_id,
-                        'ticket_no' => $mention->feedback->ici->ticket_no,
+                        'ticket_number' => $mention->feedback->ici->ticket_number,
                         'mentioner_name' => $mention->mentionerUser->name,
                         'message' => Str::limit($mention->feedback->message, 100),
                         'created_at' => $mention->created_at,

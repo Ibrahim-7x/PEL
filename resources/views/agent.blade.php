@@ -46,7 +46,7 @@
                             <label class="form-label fw-semibold">Complaint #</label>
                             <div class="input-group">
                                 <input type="text" id="complaint_number" class="form-control"
-                                    placeholder="000000-000000">
+                                    placeholder="000000-000000" value="{{ $ici->coms->complaint_number ?? '' }}">
                                 <button type="button" id="searchComplaintBtn" class="btn btn-primary">
                                     <i class="bi bi-search"></i>
                                 </button>
@@ -126,7 +126,7 @@
                             Ticket No
                             <span class="text-muted">(Auto-generated)</span>
                         </label>
-                        <input type="text" name="ticket_no" class="form-control" required readonly
+                        <input type="text" name="ticket_number" class="form-control" required readonly
                             placeholder="00-0000"
                             onblur="this.value = this.value.trim();">
                         <small class="text-muted">Ticket number will be generated automatically</small>
@@ -136,7 +136,7 @@
                         <select name="service_center" id="service_center" class="form-control" required>
                             <option value="">-- Select Service Center --</option>
                             @foreach ($serviceCenters as $center)
-                                <option value="{{ $center->sc_name }}">{{ $center->sc_name }}</option>
+                                <option value="{{ $center->sc }}">{{ $center->sc }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -219,11 +219,13 @@
 document.addEventListener('DOMContentLoaded', function() {
     const searchComplaintBtn = document.getElementById('searchComplaintBtn');
     const complaintNumberInput = document.getElementById('complaint_number');
-    const ticketNoInput = document.querySelector('input[name="ticket_no"]');
+    const ticketNoInput = document.querySelector('input[name="ticket_number"]');
 
     if (searchComplaintBtn && complaintNumberInput) {
         searchComplaintBtn.addEventListener('click', function() {
+            console.log('Search button clicked');
             const complaintNumber = complaintNumberInput.value.trim();
+            console.log('Complaint number:', complaintNumber);
 
             if (!complaintNumber) {
                 alert('Please enter a complaint number');
@@ -234,6 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
             searchComplaintBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
             searchComplaintBtn.disabled = true;
 
+            console.log('Making fetch request to:', '{{ route("fetch.coms") }}');
             // Make AJAX request to fetch COMS data
             fetch('{{ route("fetch.coms") }}', {
                 method: 'POST',
@@ -247,6 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             })
             .then(response => {
+                console.log('Fetch response status:', response.status);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -278,8 +282,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(ticketData => {
                     if (ticketData.success) {
                         // Set the ticket number (existing or new)
-                        const ticketInput = document.querySelector('input[name="ticket_no"]');
-                        ticketInput.value = ticketData.ticket_no;
+                        const ticketInput = document.querySelector('input[name="ticket_number"]');
+                        ticketInput.value = ticketData.ticket_number;
                         ticketInput.style.borderColor = '#28a745';
                         ticketInput.title = ticketData.exists ? 'Existing ticket number' : (ticketData.is_new_ticket ? 'Auto-generated ticket number' : 'Ticket number');
 
@@ -296,16 +300,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Store next escalation for later use
                         let nextEscalation = ticketData.next_escalation;
 
-                        // Set the escalation level (only for existing tickets) - show next level visually
+                        // Set the escalation level (only for existing tickets) - show current level
                         if (ticketData.exists && ticketData.ticket_data) {
                             const escalationSelect = document.querySelector('select[name="escalation_level"]');
                             if (escalationSelect) {
-                                // Show the next escalation level in the form (visual)
-                                escalationSelect.value = ticketData.next_escalation;
+                                // Show the current escalation level from database
+                                escalationSelect.value = ticketData.ticket_data.escalation_level;
 
                                 // Add visual indicator for escalation level progression
-                                escalationSelect.style.borderColor = '#ffc107';
-                                escalationSelect.title = 'Current: ' + ticketData.current_escalation + ' → Will update to: ' + ticketData.next_escalation + ' (on form submission)';
+                                escalationSelect.style.borderColor = '#17a2b8';
+                                escalationSelect.title = 'Current: ' + ticketData.current_escalation + ' → Will update to: ' + ticketData.next_escalation + ' (if case status changes to In Progress)';
                             }
                         }
 
@@ -318,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             statusInfo.className = 'alert alert-info';
                             statusContent.innerHTML = `
                                 <strong>📋 Existing Ticket Found</strong><br>
-                                <small>Ticket <strong>${ticketData.ticket_no}</strong> found for this complaint number.</small><br>
+                                <small>Ticket <strong>${ticketData.ticket_number}</strong> found for this complaint number.</small><br>
                                 <small>Current: <strong>${ticketData.current_escalation}</strong> → Will update to: <strong>${ticketData.next_escalation}</strong></small><br>
                             `;
                             statusInfo.style.display = 'block';
@@ -368,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             statusInfo.className = 'alert alert-success';
                             statusContent.innerHTML = `
                                 <strong>✅ New Ticket Generated</strong><br>
-                                <small>Ticket <strong>${ticketData.ticket_no}</strong> generated successfully for this complaint.</small><br>
+                                <small>Ticket <strong>${ticketData.ticket_number}</strong> generated successfully for this complaint.</small><br>
                                 <small>Ready for form submission.</small>
                             `;
                             statusInfo.style.display = 'block';
@@ -399,6 +403,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             });
                         }
 
+                        // Store original escalation level for comparison
+                        window.originalEscalationLevel = ticketData.exists && ticketData.ticket_data ? ticketData.ticket_data.escalation_level : 'Low';
+
                         // Set focus to service center field (or case_status for existing)
                         setTimeout(() => {
                             if (ticketData.exists) {
@@ -425,20 +432,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Populate form fields with the fetched data
+                console.log('Populating form fields with data keys:', Object.keys(data));
+                console.log('Full data object:', data);
                 if (data.JobNo) document.getElementById('job_number').value = data.JobNo;
-                if (data.JobDate) document.getElementById('coms_complaint_date').value = data.JobDate;
+                if (data.COMSComplaintDate) {
+                    // Extract date part from datetime string (format: 2025-01-13T09:10:07)
+                    const dateStr = data.COMSComplaintDate.split('T')[0];
+                    document.getElementById('coms_complaint_date').value = dateStr;
+                }
                 if (data.JobType) document.getElementById('job_type').value = data.JobType;
                 if (data.CustomerName) document.getElementById('customer_name').value = data.CustomerName;
                 if (data.ContactNo) document.getElementById('contact_no').value = data.ContactNo;
-                if (data.TechnicianName) document.getElementById('technician_name').value = data.TechnicianName;
-                if (data.PurchaseDate) document.getElementById('purchase_date').value = data.PurchaseDate;
+                if (data.TCN_NAME) document.getElementById('technician_name').value = data.TCN_NAME;
+                if (data.DateofPurchase) {
+                    // Extract date part from datetime string
+                    const purchaseDateStr = data.DateofPurchase.split('T')[0];
+                    document.getElementById('purchase_date').value = purchaseDateStr;
+                }
                 if (data.Product) document.getElementById('product').value = data.Product;
                 if (data.JobStatus) document.getElementById('job_status').value = data.JobStatus;
                 if (data.Problem) document.getElementById('problem').value = data.Problem;
                 if (data.WorkDone) document.getElementById('workdone').value = data.WorkDone;
 
+                console.log('Fields populated - checking values:');
+                console.log('job_number:', document.getElementById('job_number').value);
+                console.log('coms_complaint_date:', document.getElementById('coms_complaint_date').value);
+                console.log('technician_name:', document.getElementById('technician_name').value);
+                console.log('purchase_date:', document.getElementById('purchase_date').value);
+
             })
             .catch(error => {
+                console.error('Fetch failed with error:', error);
                 // Reset button state
                 searchComplaintBtn.innerHTML = '<i class="bi bi-search"></i>';
                 searchComplaintBtn.disabled = false;
@@ -496,7 +520,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('workdone').value = '';
 
             // Clear ticket number and reset to readonly
-            const ticketInput = document.querySelector('input[name="ticket_no"]');
+            const ticketInput = document.querySelector('input[name="ticket_number"]');
             if (ticketInput) {
                 ticketInput.value = '';
                 ticketInput.readOnly = true;

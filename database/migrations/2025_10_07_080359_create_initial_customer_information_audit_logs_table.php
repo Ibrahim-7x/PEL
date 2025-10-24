@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('initial_customer_information_audit_logs', function (Blueprint $table) {
             $table->id();
             $table->string('complaint_number');
-            $table->string('ticket_no');
+            $table->string('ticket_number');
             $table->enum('action', ['CREATED', 'UPDATED']);
             $table->string('escalation_level');
             $table->json('old_values')->nullable(); // For updates - store previous values
@@ -29,7 +29,7 @@ return new class extends Migration
 
             // Index for faster queries (shortened names for MySQL compatibility)
             $table->index(['complaint_number', 'action_timestamp'], 'ici_audit_complaint_idx');
-            $table->index(['ticket_no', 'action_timestamp'], 'ici_audit_ticket_idx');
+            $table->index(['ticket_number', 'action_timestamp'], 'ici_audit_ticket_idx');
             $table->index('action_timestamp', 'ici_audit_timestamp_idx');
         });
     }

@@ -32,7 +32,7 @@
                                 <label class="form-label fw-semibold">Complaint #</label>
                                 <div class="input-group">
                                     <input type="text" id="complaint_number" name="complaint_number" class="form-control"
-                                        placeholder="000000-000000" value="{{ $ici->complaint_number ?? '' }}">
+                                        placeholder="000000-000000" value="{{ $ici->coms->complaint_number ?? '' }}">
                                     <button type="button" id="searchComplaintBtn" class="btn btn-primary">
                                         <i class="bi bi-search"></i>
                                     </button>
@@ -104,7 +104,7 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Ticket No</label>
-                        <input type="text" name="ticket_no" id="ticket_no" class="form-control" readonly value="{{ $ici->ticket_no ?? '' }}">
+                        <input type="text" name="ticket_number" id="ticket_number" class="form-control" readonly value="{{ $ici->ticket_number ?? '' }}">
                     </div>
 
                     <div class="col-md-6">
@@ -150,18 +150,18 @@
 
             {{-- Chat section --}}
             @php
-                $shouldShowChat = $ici || $submitted_ticket_no;
+                $shouldShowChat = $ici || $submitted_ticket_number;
             @endphp
             <div id="chatSection" style="{{ $shouldShowChat ? '' : 'display: none;' }}">
                 {{-- Config for chat.js (used when chatArea is updated via AJAX) --}}
-                <div id="chatConfig" data-feedback-list-url="{{ $ici ? route('agent.feedback.list', $ici->ticket_no) : '' }}"
+                <div id="chatConfig" data-feedback-list-url="{{ $ici ? route('agent.feedback.list', $ici->ticket_number) : '' }}"
                     data-current-user="{{ auth()->user()->name }}" data-agent-index-url="{{ route('agent.index') }}"
                     data-last-feedback-id="{{ $feedbacks->last()->id ?? 0 }}"></div>
 
                 {{-- Chat header --}}
                 <div class="d-flex align-items-center mb-3 mt-4">
                     <h4 class="mb-0">
-                        Ticket <span class="badge rounded-pill text-bg-primary" id="ticketBadge">{{ $ici->ticket_no ?? $submitted_ticket_no ?? '' }}</span>
+                        Ticket <span class="badge rounded-pill text-bg-primary" id="ticketBadge">{{ $ici->ticket_number ?? $submitted_ticket_number ?? '' }}</span>
                     </h4>
                 </div>
 
@@ -196,7 +196,7 @@
                     {{-- Chat input --}}
                     <div class="card-footer card-footer-grey">
                         @php
-                            $chatTicketNo = $ici ? $ici->ticket_no : $submitted_ticket_no;
+                            $chatTicketNo = $ici ? $ici->ticket_number : $submitted_ticket_number;
                         @endphp
                         <form id="chatForm" action="{{ $chatTicketNo ? route('agent.feedback.store', $chatTicketNo) : '#' }}" method="POST"
                             class="chat-input-form">
@@ -300,10 +300,10 @@
                     @endif
 
                     // Check for existing Happy Call on page load
-                    @if($ici && $ici->ticket_no)
+                    @if($ici && $ici->ticket_number)
                         // If we have a ticket on page load, check Happy Call status after a short delay
                         setTimeout(() => {
-                            checkHappyCallStatus('{{ $ici->ticket_no }}');
+                            checkHappyCallStatus('{{ $ici->ticket_number }}');
                         }, 500);
                     @endif
                 });
@@ -537,8 +537,8 @@
                     .then(ticketData => {
                         if (ticketData.success) {
                             // Set the ticket number
-                            const ticketInput = document.getElementById('ticket_no');
-                            ticketInput.value = ticketData.ticket_no;
+                            const ticketInput = document.getElementById('ticket_number');
+                            ticketInput.value = ticketData.ticket_number;
 
                             // If ticket exists, populate form with existing data (read-only)
                             if (ticketData.exists && ticketData.ticket_data) {
@@ -549,7 +549,7 @@
                                     statusInfo.className = 'alert alert-info';
                                     statusContent.innerHTML = `
                                         <strong>📋 Ticket Found</strong><br>
-                                        <small>Ticket <strong>${ticketData.ticket_no}</strong> found for this complaint number.</small><br>
+                                        <small>Ticket <strong>${ticketData.ticket_number}</strong> found for this complaint number.</small><br>
                                         <small>Ready for chat and tracking.</small>
                                     `;
                                     statusInfo.style.display = 'block';
@@ -601,13 +601,13 @@
                             // Update ticket badge
                             const ticketBadge = document.getElementById("ticketBadge");
                             if (ticketBadge) {
-                                ticketBadge.textContent = ticketData.ticket_no;
+                                ticketBadge.textContent = ticketData.ticket_number;
                             }
 
                             // Update chat form action
                             const chatForm = document.getElementById("chatForm");
                             if (chatForm) {
-                                chatForm.action = "{{ url('/home-agent/ticket') }}/" + ticketData.ticket_no + "/feedback";
+                                chatForm.action = "{{ url('/home-agent/ticket') }}/" + ticketData.ticket_number + "/feedback";
                             }
 
                             // Enable chat input
@@ -626,7 +626,7 @@
                                 // Check if happy call exists for this ticket using the same method as the status check
                                 // This ensures consistency between initial check and ongoing status
                                 setTimeout(() => {
-                                    checkHappyCallStatus(ticketData.ticket_no);
+                                    checkHappyCallStatus(ticketData.ticket_number);
                                 }, 100);
                             }
 
@@ -637,7 +637,7 @@
                             }
 
                             // Load feedbacks
-                            fetch("{{ url('/home-agent/ticket') }}/" + ticketData.ticket_no + "/feedbacks")
+                            fetch("{{ url('/home-agent/ticket') }}/" + ticketData.ticket_number + "/feedbacks")
                                 .then(response => response.json())
                                 .then(feedbacks => {
                                     const chatBox = document.getElementById("chatScrollArea");
@@ -675,10 +675,10 @@
                                 });
                         } else {
                             // Handle new ticket creation
-                            if (ticketData.is_new_ticket && ticketData.ticket_no) {
+                            if (ticketData.is_new_ticket && ticketData.ticket_number) {
                                 // Set the new ticket number
-                                const ticketInput = document.getElementById('ticket_no');
-                                ticketInput.value = ticketData.ticket_no;
+                                const ticketInput = document.getElementById('ticket_number');
+                                ticketInput.value = ticketData.ticket_number;
 
                                 // Show success message for new ticket
 
@@ -691,13 +691,13 @@
                                 // Update ticket badge
                                 const ticketBadge = document.getElementById("ticketBadge");
                                 if (ticketBadge) {
-                                    ticketBadge.textContent = ticketData.ticket_no;
+                                    ticketBadge.textContent = ticketData.ticket_number;
                                 }
 
                                 // Update chat form action
                                 const chatForm = document.getElementById("chatForm");
                                 if (chatForm) {
-                                    chatForm.action = "{{ url('/home-agent/ticket') }}/" + ticketData.ticket_no + "/feedback";
+                                    chatForm.action = "{{ url('/home-agent/ticket') }}/" + ticketData.ticket_number + "/feedback";
                                 }
 
                                 // Enable chat input
@@ -712,7 +712,7 @@
                                 }
 
                                 // For new tickets, show the Happy Call form
-                                showHappyCallForm(ticketData.ticket_no);
+                                showHappyCallForm(ticketData.ticket_number);
                                 hideHappyCallBanner();
 
                                 // Set escalation level for new tickets (read-only display)
@@ -774,7 +774,7 @@
         // Initialize window variables for chat functionality
         window.agentIndexUrl = "{{ route('agent.index') }}";
         @if (isset($ici) && $ici)
-            window.feedbackListUrl = "{{ route('agent.feedback.list', $ici->ticket_no) }}";
+            window.feedbackListUrl = "{{ route('agent.feedback.list', $ici->ticket_number) }}";
             window.currentUser = "{{ auth()->user()->name }}";
         @endif
     </script>

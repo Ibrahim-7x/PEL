@@ -45,12 +45,12 @@ Route::middleware(['auth', 'role:Agent'])->group(function () {
     Route::get('/home-agent', [AgentController::class, 'index'])->name('agent.index');
     Route::post('/home-agent', [AgentController::class, 'store'])->name('agent.store');
     Route::get('/t-agent', [AgentController::class, 'tIndex'])->name('t_agent.index');
-    Route::get('/home-agent/ticket/{ticket_no}', [AgentController::class, 'showTicket'])->name('agent.ticket');
-    Route::get('/t-agent/ticket/{ticket_no}', [AgentController::class, 'showTicketT'])->name('t_agent.ticket');
-    Route::post('/home-agent/ticket/{ticket_no}/feedback', [AgentController::class, 'storeFeedback'])->name('agent.feedback.store');
+    Route::get('/home-agent/ticket/{ticket_number}', [AgentController::class, 'showTicket'])->name('agent.ticket');
+    Route::get('/t-agent/ticket/{ticket_number}', [AgentController::class, 'showTicketT'])->name('t_agent.ticket');
+    Route::post('/home-agent/ticket/{ticket_number}/feedback', [AgentController::class, 'storeFeedback'])->name('agent.feedback.store');
     Route::post('/home-agent/search-ticket', [AgentController::class, 'searchTicket'])->name('agent.ticket.search');
-    Route::get('/home-agent/ticket/{ticket_no}/feedbacks', [AgentController::class, 'getFeedbacks'])->name('agent.feedback.list');
-    Route::post('/agent/{ticket_no}/happy-call', [AgentController::class, 'saveHappyCallStatus'])->name('agent.happy-call.save');
+    Route::get('/home-agent/ticket/{ticket_number}/feedbacks', [AgentController::class, 'getFeedbacks'])->name('agent.feedback.list');
+    Route::post('/agent/{ticket_number}/happy-call', [AgentController::class, 'saveHappyCallStatus'])->name('agent.happy-call.save');
     // Route::post('/home-agent/fetch-coms', [AgentController::class, 'fetchComsData'])->name('agent.fetch.coms');
     // Route::post('/fetch-coms-data', [AgentController::class, 'fetchComsData'])->name('agent.fetch.coms');
 });
@@ -58,8 +58,8 @@ Route::middleware(['auth', 'role:Agent'])->group(function () {
 // Management routes
 Route::middleware(['auth', 'role:Management'])->group(function () {
     Route::get('/t-management', [ManagementController::class, 'tIndex'])->name('t_management.index');
-    Route::post('/home-management/ticket/{ticket_no}/feedback', [ManagementController::class, 'storeFeedback'])->name('management.feedback.store');
-    Route::get('/home-management/ticket/{ticket_no}/feedbacks', [ManagementController::class, 'getFeedbacks'])->name('management.feedback.list');
+    Route::post('/home-management/ticket/{ticket_number}/feedback', [ManagementController::class, 'storeFeedback'])->name('management.feedback.store');
+    Route::get('/home-management/ticket/{ticket_number}/feedbacks', [ManagementController::class, 'getFeedbacks'])->name('management.feedback.list');
     Route::post('/management/fetch-coms-data', [ManagementController::class, 'fetchComsData'])->name('management.fetch.coms');
     Route::post('/management/fetch-ticket-info', [ManagementController::class, 'searchTicket'])->name('management.fetch.ticket.info');
 });
