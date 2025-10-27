@@ -74,6 +74,9 @@ Route::middleware(['auth', 'role:Management'])->group(function () {
     
     Route::get('/export/feedback', [ExportController::class, 'feedbackPage'])->name('export.feedback');
     Route::post('/export/feedback/download', [ExportController::class, 'exportFeedback'])->name('export.feedback.download');
+    
+    Route::get('/export/coms', [ExportController::class, 'comsPage'])->name('export.coms');
+    Route::post('/export/coms/download', [ExportController::class, 'exportComs'])->name('export.coms.download');
 });
 
 

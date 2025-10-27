@@ -109,62 +109,47 @@ class ManagementController extends Controller
         ]);
 
         try {
-            // Call external COMS API - try with query parameter as shown in Postman
-            $url = 'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo);
-            \Log::info('ManagementController COMS API call', ['url' => $url]);
+            // Fetch data from database coms table instead of API
+            $comsRecord = \App\Models\Coms::where('complaint_number', $complaintNo)->first();
 
-            // Disable SSL verification for development/testing
-            $response = Http::timeout(10)->withoutVerifying()->post($url);
-
-            if ($response->successful()) {
-                try {
-                    $data = $response->json();
-                } catch (\Exception $e) {
-                    return response()->json(['error' => 'Invalid response from COMS API'], 502);
-                }
-
-                if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
-                    \Log::info('ManagementController COMS API success', [
-                        'complaint_no' => $complaintNo,
-                        'data' => $data['ComplaintDetails'][0]
-                    ]);
-                    return response()->json($data['ComplaintDetails'][0]);
-                } else {
-                    \Log::warning('ManagementController COMS API invalid response', [
-                        'complaint_no' => $complaintNo,
-                        'data' => $data
-                    ]);
-                    return response()->json(['error' => 'Complaint not found or invalid response'], 404);
-                }
-            } else {
-                // Try to parse the error response
-                $errorData = null;
-                try {
-                    $errorData = $response->json();
-                } catch (\Exception $e) {
-                    // If we can't parse JSON, use the raw body
-                }
-
-                // Check if this is an invalid complaint number (ComplaintDetails: -1)
-                if ($errorData && isset($errorData['ComplaintDetails']) && $errorData['ComplaintDetails'] === -1) {
-                    return response()->json(['error' => 'Complaint number is invalid'], 404);
-                }
-
-                // Log the actual API response for debugging
-                Log::error('COMS API error response', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
+            if (!$comsRecord) {
+                \Log::warning('ManagementController COMS database - Complaint not found', [
                     'complaint_no' => $complaintNo
                 ]);
-
-                return response()->json([
-                    'error' => 'COMS API returned error: ' . $response->status(),
-                    'details' => $response->body()
-                ], 502);
+                return response()->json(['error' => 'Complaint not found in database'], 404);
             }
+
+            // Map database fields to API response format expected by frontend
+            $complaintData = [
+                'ComplaintNo' => $comsRecord->complaint_number,
+                'JobNo' => $comsRecord->job,
+                'JobDate' => $comsRecord->coms_complaint_date,
+                'JobType' => $comsRecord->job_type,
+                'CustomerName' => $comsRecord->customer_name,
+                'ContactNo' => $comsRecord->contact_number,
+                'TechnicianName' => $comsRecord->technician_name,
+                'PurchaseDate' => $comsRecord->date_of_purchase,
+                'Product' => $comsRecord->product,
+                'JobStatus' => $comsRecord->job_status,
+                'Problem' => $comsRecord->problem,
+                'WorkDone' => $comsRecord->work_done,
+            ];
+
+            \Log::info('ManagementController COMS database success', [
+                'complaint_no' => $complaintNo,
+                'data' => $complaintData
+            ]);
+
+            return response()->json($complaintData);
         } catch (\Exception $e) {
+            Log::error('ManagementController COMS database error', [
+                'error' => $e->getMessage(),
+                'complaint_no' => $complaintNo,
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
-                'error' => 'Unable to connect to COMS API. Please try again later.',
+                'error' => 'Unable to fetch COMS data from database. Please try again later.',
                 'details' => $e->getMessage()
             ], 500);
         }

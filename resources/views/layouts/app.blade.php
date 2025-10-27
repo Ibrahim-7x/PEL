@@ -82,6 +82,13 @@
                         <span class="sidebar-text">Feedback</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="{{ route('export.coms') }}" class="nav-link {{ request()->routeIs('export.coms') ? 'active fw-bold' : '' }}"
+                       style="color: rgba(255,255,255,0.8); transition: all 0.3s ease; border-radius: 8px; padding: 10px 15px;">
+                        <i class="bi bi-chat-dots me-2"></i>
+                        <span class="sidebar-text">COMS</span>
+                    </a>
+                </li>
             @endif
 
         </ul>

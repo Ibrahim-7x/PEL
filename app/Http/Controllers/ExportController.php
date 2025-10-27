@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use App\Models\InitialCustomerInformation;
 use App\Models\HappyCallStatus;
 use App\Models\Feedback;
+use App\Models\Coms;
 
 class ExportController extends Controller
 {
@@ -23,6 +24,10 @@ class ExportController extends Controller
 
     public function feedbackPage() {
         return view('reports.feedback');
+    }
+
+    public function comsPage() {
+        return view('reports.coms');
     }
 
     // Export logic
@@ -42,6 +47,12 @@ class ExportController extends Controller
         $data = Feedback::whereBetween('created_at', [$request->start_date, $request->end_date])->get();
 
         return $this->exportToExcel($data, 'feedback.xlsx');
+    }
+
+    public function exportComs(Request $request) {
+        $data = Coms::whereBetween('created_at', [$request->start_date, $request->end_date])->get();
+
+        return $this->exportToExcel($data, 'coms.xlsx');
     }
 
     private function exportToExcel($data, $filename) {
