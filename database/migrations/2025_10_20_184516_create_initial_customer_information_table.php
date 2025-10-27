@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('initial_customer_information', function (Blueprint $table) {
             $table->id();
             $table->string('ticket_number')->unique();
-            $table->unsignedBigInteger('complaint_id');
+            $table->foreignId('complaint_id')->constrained('coms')->onDelete('cascade');
             $table->string('service_center');
             $table->timestamp('complaint_escalation_date');
             $table->bigInteger('aging')->nullable();
@@ -24,9 +24,7 @@ return new class extends Migration
             $table->string('reason_of_escalation');
             $table->string('escalation_level');
             $table->string('voice_of_customer');
-            $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('complaint_id')->references('id')->on('coms')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
 
             $table->timestamps();
         });

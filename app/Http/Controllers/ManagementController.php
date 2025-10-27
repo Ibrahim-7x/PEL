@@ -102,22 +102,21 @@ class ManagementController extends Controller
             return response()->json(['error' => 'Complaint number is required'], 400);
         }
 
-        \Log::info('ManagementController fetchComsData called', [
-            'user_role' => auth()->user()->role ?? 'none',
-            'complaint_no' => $complaintNo,
-            'request_all' => $request->all()
-        ]);
-
         try {
-            // Fetch data from database coms table instead of API
-            $comsRecord = \App\Models\Coms::where('complaint_number', $complaintNo)->first();
+            // ONLY fetch from database - no API calls for case tracking forms
+            $comsRecord = Coms::where('complaint_number', $complaintNo)->first();
 
             if (!$comsRecord) {
                 \Log::warning('ManagementController COMS database - Complaint not found', [
                     'complaint_no' => $complaintNo
                 ]);
-                return response()->json(['error' => 'Complaint not found in database'], 404);
+                return response()->json(['error' => 'No complaint found'], 404);
             }
+
+            \Log::info('ManagementController COMS database success', [
+                'complaint_no' => $complaintNo,
+                'record_id' => $comsRecord->id
+            ]);
 
             // Map database fields to API response format expected by frontend
             $complaintData = [
@@ -134,11 +133,6 @@ class ManagementController extends Controller
                 'Problem' => $comsRecord->problem,
                 'WorkDone' => $comsRecord->work_done,
             ];
-
-            \Log::info('ManagementController COMS database success', [
-                'complaint_no' => $complaintNo,
-                'data' => $complaintData
-            ]);
 
             return response()->json($complaintData);
         } catch (\Exception $e) {

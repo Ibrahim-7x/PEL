@@ -288,8 +288,7 @@
                     this.innerHTML = '<i class="bi bi-hourglass-split"></i>';
                     this.disabled = true;
 
-                    // First, fetch COMS data
-                    console.log('Fetching COMS data for complaint number:', complaintNumber);
+                    // Fetch COMS data directly from database
                     fetch("{{ route('management.fetch.coms') }}", {
                         method: "POST",
                         headers: {
@@ -301,41 +300,35 @@
                             complaint_number: complaintNumber
                         })
                     })
-                    .then(response => {
-                        console.log('COMS API response status:', response.status);
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('COMS API response data:', data);
+                    .then(response => response.json())
+                    .then(comsData => {
                         // Reset button state
                         document.getElementById("searchComplaintBtn").innerHTML = '<i class="bi bi-search"></i>';
                         document.getElementById("searchComplaintBtn").disabled = false;
 
-                        if (data.error) {
-                            console.error('COMS API error:', data.error);
-                            showErrorMessage('COMS Error: ' + data.error);
+                        if (comsData.error) {
+                            // No complaint found in database
+                            showErrorMessage('No complaint found');
                             return;
                         }
 
-                        // Populate COMS fields with fetched data
-                        if (data.JobNo) document.getElementById('job_number').value = data.JobNo;
-                        if (data.JobDate) {
-                            document.getElementById('coms_complaint_date').value = data.JobDate;
-                            // Update aging calculation when COMS complaint date is set
-                            updateAging(data.JobDate);
+                        // Populate COMS fields with data from database
+                        if (comsData.JobNo) document.getElementById('job_number').value = comsData.JobNo;
+                        if (comsData.JobDate) {
+                            document.getElementById('coms_complaint_date').value = comsData.JobDate;
+                            updateAging(comsData.JobDate);
                         }
-                        if (data.JobType) document.getElementById('job_type').value = data.JobType;
-                        if (data.CustomerName) document.getElementById('customer_name').value = data.CustomerName;
-                        if (data.ContactNo) document.getElementById('contact_no').value = data.ContactNo;
-                        if (data.TechnicianName) document.getElementById('technician_name').value = data.TechnicianName;
-                        if (data.PurchaseDate) document.getElementById('purchase_date').value = data.PurchaseDate;
-                        if (data.Product) document.getElementById('product').value = data.Product;
-                        if (data.JobStatus) document.getElementById('job_status').value = data.JobStatus;
-                        if (data.Problem) document.getElementById('problem').value = data.Problem;
-                        if (data.WorkDone) document.getElementById('workdone').value = data.WorkDone;
+                        if (comsData.JobType) document.getElementById('job_type').value = comsData.JobType;
+                        if (comsData.CustomerName) document.getElementById('customer_name').value = comsData.CustomerName;
+                        if (comsData.ContactNo) document.getElementById('contact_no').value = comsData.ContactNo;
+                        if (comsData.TechnicianName) document.getElementById('technician_name').value = comsData.TechnicianName;
+                        if (comsData.PurchaseDate) document.getElementById('purchase_date').value = comsData.PurchaseDate;
+                        if (comsData.Product) document.getElementById('product').value = comsData.Product;
+                        if (comsData.JobStatus) document.getElementById('job_status').value = comsData.JobStatus;
+                        if (comsData.Problem) document.getElementById('problem').value = comsData.Problem;
+                        if (comsData.WorkDone) document.getElementById('workdone').value = comsData.WorkDone;
 
-                        // Now fetch ticket information (read-only, no updates)
-                        console.log('Fetching ticket info for complaint number:', complaintNumber);
+                        // Now fetch ticket information for this complaint
                         return fetch("{{ route('management.fetch.ticket.info') }}", {
                             method: "POST",
                             headers: {
@@ -348,66 +341,61 @@
                             })
                         });
                     })
-                    .then(response => {
-                        console.log('Ticket info API response status:', response.status);
-                        return response.json();
-                    })
+                    .then(response => response ? response.json() : null)
                     .then(ticketData => {
-                        console.log('Ticket info API response data:', ticketData);
-                        if (ticketData.success) {
+                        if (!ticketData) return; // Skip if no ticket data (COMS fetch failed)
+
+                        if (ticketData.success && ticketData.exists) {
                             // Set the ticket number
                             const ticketInput = document.getElementById('ticket_number');
                             ticketInput.value = ticketData.ticket_number;
 
-                            // If ticket exists, populate form with existing data (read-only)
-                            if (ticketData.exists && ticketData.ticket_data) {
-                                // Show status message for existing ticket (read-only)
-                                const statusInfo = document.getElementById('ticketStatusInfo');
-                                const statusContent = document.getElementById('ticketStatusContent');
-                                if (statusInfo && statusContent) {
-                                    statusInfo.className = 'alert alert-info';
-                                    statusContent.innerHTML = `
-                                        <strong>📋 Ticket Found</strong><br>
-                                        <small>Ticket <strong>${ticketData.ticket_number}</strong> found for this complaint number.</small><br>
-                                    `;
-                                    statusInfo.style.display = 'block';
-                                }
+                            // Show status message for existing ticket (read-only)
+                            const statusInfo = document.getElementById('ticketStatusInfo');
+                            const statusContent = document.getElementById('ticketStatusContent');
+                            if (statusInfo && statusContent) {
+                                statusInfo.className = 'alert alert-info';
+                                statusContent.innerHTML = `
+                                    <strong>📋 Ticket Found</strong><br>
+                                    <small>Ticket <strong>${ticketData.ticket_number}</strong> found for this complaint number.</small><br>
+                                `;
+                                statusInfo.style.display = 'block';
+                            }
 
-                                // Populate Initial Customer Information fields
-                                if (ticketData.ticket_data.service_center) {
-                                    document.getElementById('service_center').value = ticketData.ticket_data.service_center;
-                                }
-                                if (ticketData.ticket_data.case_status) {
-                                    document.getElementById('case_status').value = ticketData.ticket_data.case_status;
-                                }
-                                if (ticketData.ticket_data.complaint_category) {
-                                    document.getElementById('complaint_category').value = ticketData.ticket_data.complaint_category;
-                                }
-                                if (ticketData.ticket_data.agent_name) {
-                                    document.getElementById('agent_name').value = ticketData.ticket_data.agent_name;
-                                }
-                                if (ticketData.ticket_data.reason_of_escalation) {
-                                    document.getElementById('reason_of_escalation').value = ticketData.ticket_data.reason_of_escalation;
-                                }
-                                if (ticketData.ticket_data.voice_of_customer) {
-                                    document.getElementById('voice_of_customer').value = ticketData.ticket_data.voice_of_customer;
-                                }
+                            // Populate Initial Customer Information fields
+                            if (ticketData.ticket_data.service_center) {
+                                document.getElementById('service_center').value = ticketData.ticket_data.service_center;
+                            }
+                            if (ticketData.ticket_data.case_status) {
+                                document.getElementById('case_status').value = ticketData.ticket_data.case_status;
+                            }
+                            if (ticketData.ticket_data.complaint_category) {
+                                document.getElementById('complaint_category').value = ticketData.ticket_data.complaint_category;
+                            }
+                            if (ticketData.ticket_data.agent_name) {
+                                document.getElementById('agent_name').value = ticketData.ticket_data.agent_name;
+                            }
+                            if (ticketData.ticket_data.reason_of_escalation) {
+                                document.getElementById('reason_of_escalation').value = ticketData.ticket_data.reason_of_escalation;
+                            }
+                            if (ticketData.ticket_data.voice_of_customer) {
+                                document.getElementById('voice_of_customer').value = ticketData.ticket_data.voice_of_customer;
+                            }
 
-                                // Display current escalation level (read-only) - ACTUAL DATABASE VALUE
-                                if (ticketData.ticket_data.escalation_level) {
-                                    const escalationInput = document.getElementById('escalation_level');
-                                    if (escalationInput) {
-                                        escalationInput.value = ticketData.ticket_data.escalation_level;
-                                        escalationInput.style.borderColor = '#17a2b8';
-                                        escalationInput.title = `Current escalation level: ${ticketData.ticket_data.escalation_level}`;
-                                    }
+                            // Display current escalation level (read-only) - ACTUAL DATABASE VALUE
+                            if (ticketData.ticket_data.escalation_level) {
+                                const escalationInput = document.getElementById('escalation_level');
+                                if (escalationInput) {
+                                    escalationInput.value = ticketData.ticket_data.escalation_level;
+                                    escalationInput.style.borderColor = '#17a2b8';
+                                    escalationInput.title = `Current escalation level: ${ticketData.ticket_data.escalation_level}`;
                                 }
+                            }
 
-                                // Update aging based on ICI complaint escalation date
-                                if (ticketData.ticket_data.complaint_escalation_date) {
-                                    document.getElementById('complaint_escalation_date').value = ticketData.ticket_data.complaint_escalation_date;
-                                    updateAging(ticketData.ticket_data.complaint_escalation_date);
-                                }
+                            // Update aging based on ICI complaint escalation date
+                            if (ticketData.ticket_data.complaint_escalation_date) {
+                                document.getElementById('complaint_escalation_date').value = ticketData.ticket_data.complaint_escalation_date;
+                                updateAging(ticketData.ticket_data.complaint_escalation_date);
                             }
 
                             // Show chat section and update it
@@ -490,74 +478,8 @@
                                     }
                                 });
                         } else {
-                            // Handle new ticket creation
-                            if (ticketData.is_new_ticket && ticketData.ticket_number) {
-                                // Set the new ticket number
-                                const ticketInput = document.getElementById('ticket_number');
-                                ticketInput.value = ticketData.ticket_number;
-
-                                // Show success message for new ticket
-
-                                // Show chat section for new ticket
-                                const chatSection = document.getElementById("chatSection");
-                                if (chatSection) {
-                                    chatSection.style.display = "block";
-                                }
-
-                                // Update ticket badge
-                                const ticketBadge = document.getElementById("ticketBadge");
-                                if (ticketBadge) {
-                                    ticketBadge.textContent = ticketData.ticket_number;
-                                }
-
-                                // Update chat form action
-                                const chatForm = document.getElementById("chatForm");
-                                if (chatForm) {
-                                    chatForm.action = "{{ url('/home-management/ticket') }}/" + ticketData.ticket_number + "/feedback";
-                                }
-
-                                // Enable chat input
-                                const chatMessage = document.getElementById("chatMessage");
-                                if (chatMessage) {
-                                    chatMessage.disabled = false;
-                                }
-
-                                const chatFormButton = document.getElementById("chatForm").querySelector("button");
-                                if (chatFormButton) {
-                                    chatFormButton.disabled = false;
-                                }
-
-
-                                // Set escalation level for new tickets (read-only display)
-                                if (ticketData.ticket_data && ticketData.ticket_data.escalation_level) {
-                                    const escalationInput = document.getElementById('escalation_level');
-                                    if (escalationInput) {
-                                        escalationInput.value = ticketData.ticket_data.escalation_level;
-                                        escalationInput.style.borderColor = '#17a2b8';
-                                        escalationInput.title = `Escalation level: ${ticketData.ticket_data.escalation_level}`;
-                                    }
-                                }
-
-                                // Clear existing chat messages and show empty state
-                                const chatScrollArea = document.getElementById("chatScrollArea");
-                                if (chatScrollArea) {
-                                    chatScrollArea.innerHTML = '<p class="text-center text-muted my-5">No feedback yet. Be the first to send a message!</p>';
-                                }
-
-                            } else {
-                                // Handle errors or no ticket found
-                                if (ticketData.message) {
-                                    showErrorMessage(ticketData.message);
-                                } else {
-                                    showErrorMessage('Error: ' + (ticketData.error || 'Unknown error occurred'));
-                                }
-
-                                // Ensure chat section remains hidden for errors
-                                const chatSection = document.getElementById("chatSection");
-                                if (chatSection) {
-                                    chatSection.style.display = "none";
-                                }
-                            }
+                            // COMS data found but no ticket exists - still show COMS data but no chat
+                            showErrorMessage('COMS data found but no ticket exists for this complaint number.');
                         }
                     })
                     .catch(error => {
@@ -565,7 +487,7 @@
                         document.getElementById("searchComplaintBtn").innerHTML = '<i class="bi bi-search"></i>';
                         document.getElementById("searchComplaintBtn").disabled = false;
 
-                        showErrorMessage('Failed to process complaint. Please try again.');
+                        showErrorMessage('Failed to search complaint. Please try again.');
                     });
                 });
 

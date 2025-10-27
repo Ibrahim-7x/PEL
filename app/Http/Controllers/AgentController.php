@@ -11,7 +11,6 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreHappyCallStatusRequest;
 use App\Models\ServiceCenter;
 use App\Models\ComplaintCategory;
 use App\Models\EscalationReason;
@@ -26,6 +25,7 @@ use App\Models\Coms;
 
 class AgentController extends Controller
 {
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -37,7 +37,7 @@ class AgentController extends Controller
         $data = $this->getCommonViewData($request->ticket_number);
         return view('agent', $data);
     }
-
+    
     // Chat page for agents
     public function tIndex(Request $request)
     {
@@ -47,16 +47,39 @@ class AgentController extends Controller
             'submitted_ticket_number' => session('ticket_number')
         ]);
     }
+    
+    private function getCommonViewData($ticketNo = null)
+    {
+        $data = [
+            'serviceCenters' => ServiceCenter::orderBy('sc')->get(),
+            'complaintCategory' => ComplaintCategory::orderBy('category_name')->get(),
+            'reasonofEscalation' => EscalationReason::orderBy('reason')->get(),
+            'delayReason' => DelayReason::orderBy('reason')->get(),
+            'ici' => null,
+            'feedbacks' => collect()
+        ];
 
-    // Save or update ICI record based on complaint number
+        if ($ticketNo) {
+            $data['ici'] = InitialCustomerInformation::with('happyCallStatus')
+                ->where('ticket_number', $ticketNo)
+                ->first();
+                
+            if ($data['ici']) {
+                $data['feedbacks'] = Feedback::where('ici_id', $data['ici']->id)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+            }
+        }
+
+        return $data;
+    }
+    
     public function store(Request $request)
     {
         $complaintNumber = $request->complaint_number_hidden ?: $request->complaint_number;
 
-        // First, fetch data from COMS API and store in coms table if not exists
+        // Fetch and store COMS data only when submitting the form
         $comsRecord = $this->fetchAndStoreComsData($complaintNumber);
-
-        // Check if this is an update (complaint number exists) or create (new complaint)
         $existingTicket = InitialCustomerInformation::where('complaint_id', $comsRecord->id)->first();
 
         $iciData = [
@@ -74,18 +97,6 @@ class AgentController extends Controller
         ];
 
         if ($existingTicket) {
-            // Debug: Log the request data
-            \Log::info('AgentController store - Update existing ticket', [
-                'complaint_number' => $complaintNumber,
-                'request_all' => $request->all(),
-                'current_escalation' => $existingTicket->escalation_level,
-                'case_status' => $request->case_status,
-                'escalation_level_in_request' => $request->escalation_level,
-                'has_escalation_level' => $request->filled('escalation_level'),
-                'escalation_changed' => $request->escalation_level !== $existingTicket->escalation_level
-            ]);
-
-            // Update existing ticket - only validate editable fields
             $request->validate([
                 'ticket_number' => 'required',
                 'complaint_number_hidden' => 'required',
@@ -94,82 +105,44 @@ class AgentController extends Controller
                 'voice_of_customer' => 'required'
             ]);
 
-            // For existing tickets, only update the editable fields
             $updateData = [
                 'case_status' => $request->case_status,
                 'voice_of_customer' => $request->voice_of_customer,
                 'complaint_escalation_date' => now(),
             ];
 
-            // Auto-update escalation level only if case status is "In Progress" AND escalation level wasn't explicitly changed
             $currentEscalation = $existingTicket->escalation_level;
             $nextEscalation = $this->getNextEscalationLevel($currentEscalation);
 
             if ($request->case_status === 'In Progress') {
-                // Check if user explicitly changed the escalation level
                 $userChangedEscalation = $request->filled('escalation_level') && $request->escalation_level !== $currentEscalation;
-
                 if (!$userChangedEscalation) {
-                    // Auto-escalate only if user didn't manually change it
                     $updateData['escalation_level'] = $nextEscalation;
                     $escalationWasUpdated = true;
-                    $oldEscalationLevel = $currentEscalation;
-                    \Log::info('AgentController store - Auto-updating escalation for In Progress', [
-                        'current' => $currentEscalation,
-                        'next' => $nextEscalation,
-                        'user_changed' => false
-                    ]);
                 } else {
-                    // User explicitly changed escalation level, respect their choice
                     $updateData['escalation_level'] = $request->escalation_level;
                     $escalationWasUpdated = true;
-                    $oldEscalationLevel = $currentEscalation;
-                    \Log::info('AgentController store - User changed escalation level', [
-                        'current' => $currentEscalation,
-                        'user_selected' => $request->escalation_level
-                    ]);
                 }
             } else {
-                // Only update escalation level if explicitly provided in the request
                 if ($request->filled('escalation_level')) {
                     $updateData['escalation_level'] = $request->escalation_level;
                     $escalationWasUpdated = $request->escalation_level !== $currentEscalation;
-                    $oldEscalationLevel = $currentEscalation;
-                    \Log::info('AgentController store - Updating escalation from request', [
-                        'current' => $currentEscalation,
-                        'new' => $request->escalation_level,
-                        'was_updated' => $escalationWasUpdated
-                    ]);
                 } else {
                     $escalationWasUpdated = false;
-                    $oldEscalationLevel = $currentEscalation;
-                    \Log::info('AgentController store - No escalation update needed', [
-                        'current' => $currentEscalation,
-                        'reason' => 'escalation_level not in request'
-                    ]);
                 }
             }
 
             $existingTicket->update($updateData);
 
-            // Get old values for logging (before update)
             $oldValues = $existingTicket->getOriginal();
-
-            // Get new values for logging (only include fields that were actually updated)
-            $newValues = $existingTicket->fresh()->only([
-                'case_status', 'escalation_level', 'voice_of_customer'
-            ]);
-
-            // Determine changed fields (only check the fields that were updated)
+            $newValues = $existingTicket->fresh()->only(['case_status', 'escalation_level', 'voice_of_customer']);
             $changedFields = array_keys(array_diff_assoc($newValues, array_intersect_key($oldValues, $newValues)));
 
-            // Create log notes based on what changed
             $logNotes = 'Ticket updated';
             if ($escalationWasUpdated) {
-                $logNotes .= ' - escalation level auto-updated from ' . $oldEscalationLevel . ' to ' . $nextEscalation;
+                $logNotes .= ' - escalation level updated';
             }
 
-            // Log the update activity
             $this->logActivity(
                 $existingTicket->coms->complaint_number ?? $complaintNumber,
                 $existingTicket->ticket_number,
@@ -181,13 +154,9 @@ class AgentController extends Controller
                 $logNotes
             );
 
-            $successMessage = $escalationWasUpdated ?
-                'Record updated successfully. Escalation level updated.' :
-                'Record updated successfully.';
-
+            $successMessage = $escalationWasUpdated ? 'Record updated successfully. Escalation level updated.' : 'Record updated successfully.';
             return redirect()->back()->with('success', $successMessage);
         } else {
-            // Create new ticket
             $request->validate([
                 'ticket_number' => 'required|unique:initial_customer_information,ticket_number',
                 'complaint_number_hidden' => 'required',
@@ -200,22 +169,16 @@ class AgentController extends Controller
                 'voice_of_customer' => 'required'
             ]);
 
-
             $ici = InitialCustomerInformation::create($iciData);
 
-            // Log the creation activity
             $this->logActivity(
                 $ici->coms->complaint_number ?? $complaintNumber,
                 $ici->ticket_number,
                 'CREATED',
                 $ici->escalation_level,
-                null, // No old values for creation
-                $ici->only([
-                    'service_center', 'case_status', 'complaint_category',
-                    'agent_name', 'reason_of_escalation', 'escalation_level',
-                    'voice_of_customer', 'complaint_escalation_date'
-                ]),
-                null, // No changed fields for creation
+                null,
+                $ici->only(['service_center', 'case_status', 'complaint_category', 'agent_name', 'reason_of_escalation', 'escalation_level', 'voice_of_customer', 'complaint_escalation_date']),
+                null,
                 'New ticket created for complaint number'
             );
 
@@ -224,43 +187,20 @@ class AgentController extends Controller
     }
 
     // Show a specific ticket's details + feedback
-    public function showTicket(string $ticket_number)
+    private function showTicketCommon($ticket_number, $view)
     {
-        $ici = InitialCustomerInformation::with('happyCallStatus')->where('ticket_number', $ticket_number)->firstOrFail();
-
-        $feedbacks = Feedback::where('ici_id', $ici->id)
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        return view('agent', [
-            'ici'                 => $ici,
-            'feedbacks'           => $feedbacks,
-            'serviceCenters'      => ServiceCenter::orderBy('sc')->get(),
-            'complaintCategory'   => ComplaintCategory::orderBy('category_name')->get(),
-            'caseStatus'          => CaseStatus::orderBy('status')->get(),
-            'reasonofEscalation'  => EscalationReason::orderBy('reason')->get(),
-            'delayReason'         => DelayReason::orderBy('reason')->get(),
-        ]);
+        $data = $this->getCommonViewData($ticket_number);
+        return view($view, $data);
     }
 
-    // Show a specific ticket's details + feedback for tracking
+    public function showTicket(string $ticket_number)
+    {
+        return $this->showTicketCommon($ticket_number, 'agent');
+    }
+
     public function showTicketT(string $ticket_number)
     {
-        $ici = InitialCustomerInformation::with('happyCallStatus')->where('ticket_number', $ticket_number)->firstOrFail();
-
-        $feedbacks = Feedback::where('ici_id', $ici->id)
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        return view('t_agent', [
-            'ici'                 => $ici,
-            'feedbacks'           => $feedbacks,
-            'serviceCenters'      => ServiceCenter::orderBy('sc')->get(),
-            'complaintCategory'   => ComplaintCategory::orderBy('category_name')->get(),
-            'caseStatus'          => CaseStatus::orderBy('status')->get(),
-            'reasonofEscalation'  => EscalationReason::orderBy('reason')->get(),
-            'delayReason'         => DelayReason::orderBy('reason')->get(),
-        ]);
+        return $this->showTicketCommon($ticket_number, 't_agent');
     }
 
     // Store feedback for a specific ticket
@@ -359,44 +299,99 @@ class AgentController extends Controller
         }
 
         try {
-            // Fetch data from database coms table instead of API
-            $comsRecord = Coms::where('complaint_number', $complaintNo)->first();
+            // First check if data already exists in database (for previously submitted complaints)
+            $existingRecord = Coms::where('complaint_number', $complaintNo)->first();
 
-            if (!$comsRecord) {
-                return response()->json(['error' => 'Complaint not found in database'], 404);
+            if ($existingRecord) {
+                \Log::info('COMS data found in database', [
+                    'complaint_number' => $complaintNo,
+                    'record_id' => $existingRecord->id
+                ]);
+
+                // Return data in API format expected by frontend
+                return response()->json([
+                    'ComplaintNo' => $existingRecord->complaint_number,
+                    'JobNo' => $existingRecord->job,
+                    'JobDate' => $existingRecord->coms_complaint_date,
+                    'JobType' => $existingRecord->job_type,
+                    'CustomerName' => $existingRecord->customer_name,
+                    'ContactNo' => $existingRecord->contact_number,
+                    'TechnicianName' => $existingRecord->technician_name,
+                    'PurchaseDate' => $existingRecord->date_of_purchase,
+                    'Product' => $existingRecord->product,
+                    'JobStatus' => $existingRecord->job_status,
+                    'Problem' => $existingRecord->problem,
+                    'WorkDone' => $existingRecord->work_done,
+                ]);
             }
 
-            // Map database fields to API response format expected by frontend
-            $complaintData = [
-                'ComplaintNo' => $comsRecord->complaint_number,
-                'JobNo' => $comsRecord->job,
-                'JobDate' => $comsRecord->coms_complaint_date,
-                'JobType' => $comsRecord->job_type,
-                'CustomerName' => $comsRecord->customer_name,
-                'ContactNo' => $comsRecord->contact_number,
-                'TechnicianName' => $comsRecord->technician_name,
-                'PurchaseDate' => $comsRecord->date_of_purchase,
-                'Product' => $comsRecord->product,
-                'JobStatus' => $comsRecord->job_status,
-                'Problem' => $comsRecord->problem,
-                'WorkDone' => $comsRecord->work_done,
-            ];
+            // Data not in database, fetch from API but DO NOT STORE (only for display)
+            $response = Http::timeout(10)->withoutVerifying()->post(
+                'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo)
+            );
 
-            \Log::info('Database fetchComsData - Data retrieved', [
-                'complaint_number' => $complaintNo,
-                'complaint_data' => $complaintData
-            ]);
+            if ($response->successful()) {
+                try {
+                    $data = $response->json();
+                    \Log::info('COMS API fetchComsData - Raw response data', [
+                        'complaint_number' => $complaintNo,
+                        'data' => $data
+                    ]);
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'Invalid response from COMS API'], 502);
+                }
 
-            return response()->json($complaintData);
+                if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
+                    $complaintData = $data['ComplaintDetails'][0];
+
+                    \Log::info('COMS API fetchComsData - ComplaintDetails[0] data (not stored)', [
+                        'complaint_number' => $complaintNo,
+                        'complaint_data' => $complaintData,
+                        'keys' => array_keys($complaintData)
+                    ]);
+
+                    // Return the API response data WITHOUT storing in database
+                    return response()->json($complaintData);
+                } else {
+                    return response()->json(['error' => 'Complaint not found or invalid response'], 404);
+                }
+            } else {
+                // Try to parse the error response
+                $errorData = null;
+                try {
+                    $errorData = $response->json();
+                } catch (\Exception $e) {
+                    // If we can't parse JSON, use the raw body
+                }
+
+                // Check if this is an invalid complaint number (ComplaintDetails: -1)
+                if ($errorData && isset($errorData['ComplaintDetails']) && $errorData['ComplaintDetails'] === -1) {
+                    return response()->json(['error' => 'Complaint number is invalid'], 404);
+                }
+
+                // Log the actual API response for debugging
+                Log::error('COMS API error response', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'complaint_no' => $complaintNo,
+                    'request_url' => $response->effectiveUri(),
+                    'request_method' => 'POST'
+                ]);
+
+                return response()->json([
+                    'error' => 'COMS API returned error: ' . $response->status(),
+                    'details' => $response->body()
+                ], 502);
+            }
         } catch (\Exception $e) {
-            Log::error('Database fetchComsData error', [
+            Log::error('COMS API connection error', [
                 'error' => $e->getMessage(),
                 'complaint_no' => $complaintNo,
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
-                'error' => 'Unable to fetch COMS data from database. Please try again later.',
+                'error' => 'Unable to connect to COMS API. Please try again later.',
                 'details' => $e->getMessage()
             ], 500);
         }
@@ -594,58 +589,35 @@ class AgentController extends Controller
         }
     }
 
+
     /**
-     * Fetch COMS data from API and store in database if not exists
+     * Fetch COMS data from API and store in database
      *
      * @param string $complaintNumber
      * @return Coms
      */
     private function fetchAndStoreComsData($complaintNumber)
     {
-        // Check if COMS record already exists
-        $existingComs = Coms::where('complaint_number', $complaintNumber)->first();
-        if ($existingComs) {
-            \Log::info('fetchAndStoreComsData - Existing COMS record found', [
-                'complaint_number' => $complaintNumber,
-                'existing_data' => $existingComs->toArray()
-            ]);
-            return $existingComs;
+        // First check if data already exists in database
+        $existingRecord = Coms::where('complaint_number', $complaintNumber)->first();
+
+        if ($existingRecord) {
+            return $existingRecord;
         }
 
-        \Log::info('fetchAndStoreComsData - Fetching from API', [
-            'complaint_number' => $complaintNumber
-        ]);
-
-        // Fetch data from COMS API
+        // Data not in database, fetch from API and store
         $response = Http::timeout(10)->withoutVerifying()->post(
             'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNumber)
         );
 
-        \Log::info('fetchAndStoreComsData - API Response', [
-            'complaint_number' => $complaintNumber,
-            'status' => $response->status(),
-            'successful' => $response->successful(),
-            'body' => $response->body()
-        ]);
-
         if ($response->successful()) {
             $data = $response->json();
-
-            \Log::info('fetchAndStoreComsData - Parsed JSON data', [
-                'complaint_number' => $complaintNumber,
-                'data' => $data
-            ]);
 
             if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
                 $complaintData = $data['ComplaintDetails'][0];
 
-                \Log::info('fetchAndStoreComsData - Complaint data from API', [
-                    'complaint_number' => $complaintNumber,
-                    'complaint_data' => $complaintData
-                ]);
-
-                // Prepare data for storage
-                $comsData = [
+                // Store the API data in database
+                $comsRecord = Coms::create([
                     'complaint_number' => $complaintData['ComplaintNo'] ?? $complaintNumber,
                     'job' => $complaintData['JobNo'] ?? '',
                     'coms_complaint_date' => isset($complaintData['COMSComplaintDate']) ? \Carbon\Carbon::parse($complaintData['COMSComplaintDate'])->format('Y-m-d') : null,
@@ -658,63 +630,34 @@ class AgentController extends Controller
                     'job_status' => $complaintData['JobStatus'] ?? '',
                     'problem' => $complaintData['Problem'] ?? '',
                     'work_done' => $complaintData['WorkDone'] ?? '',
-                ];
-
-                \Log::info('fetchAndStoreComsData - Data to be stored', [
-                    'complaint_number' => $complaintNumber,
-                    'coms_data' => $comsData
                 ]);
 
-                // Store in coms table
-                $comsRecord = Coms::create($comsData);
-
-                \Log::info('fetchAndStoreComsData - Record created successfully', [
+                \Log::info('COMS data stored in database on form submit', [
                     'complaint_number' => $complaintNumber,
-                    'coms_id' => $comsRecord->id,
-                    'stored_data' => $comsRecord->toArray()
+                    'record_id' => $comsRecord->id
                 ]);
 
                 return $comsRecord;
-            } else {
-                \Log::warning('fetchAndStoreComsData - API returned success but no valid data', [
-                    'complaint_number' => $complaintNumber,
-                    'data' => $data
-                ]);
             }
-        } else {
-            \Log::error('fetchAndStoreComsData - API request failed', [
-                'complaint_number' => $complaintNumber,
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
         }
 
-        \Log::info('fetchAndStoreComsData - Creating minimal record due to API failure', [
-            'complaint_number' => $complaintNumber
-        ]);
-
-        // If API fails, create minimal record
-        $minimalRecord = Coms::create([
-            'complaint_number' => $complaintNumber,
-            'job' => '',
-            'coms_complaint_date' => null,
-            'job_type' => '',
-            'customer_name' => '',
-            'contact_number' => '',
-            'technician_name' => '',
-            'date_of_purchase' => null,
-            'product' => '',
-            'job_status' => '',
-            'problem' => '',
-            'work_done' => '',
-        ]);
-
-        \Log::info('fetchAndStoreComsData - Minimal record created', [
-            'complaint_number' => $complaintNumber,
-            'coms_id' => $minimalRecord->id
-        ]);
-
-        return $minimalRecord;
+        // If API fails, create empty record to prevent errors
+        return Coms::firstOrCreate(
+            ['complaint_number' => $complaintNumber],
+            [
+                'job' => '',
+                'coms_complaint_date' => null,
+                'job_type' => '',
+                'customer_name' => '',
+                'contact_number' => '',
+                'technician_name' => '',
+                'date_of_purchase' => null,
+                'product' => '',
+                'job_status' => '',
+                'problem' => '',
+                'work_done' => '',
+            ]
+        );
     }
 
     /**
@@ -1065,145 +1008,102 @@ class AgentController extends Controller
         }
     }
 
-    /**
-     * Handle happy call creation (with form data)
-     */
     private function handleHappyCallCreation($request, $ticket, $ticket_number)
     {
-        // Validate the request data
         $request->validate([
-            'resolved_date' => [
-                'required',
-                'date',
-                'before_or_equal:happy_call_date',
-            ],
-            'happy_call_date' => [
-                'required',
-                'date',
-                'after_or_equal:resolved_date',
-            ],
-            'customer_satisfied' => [
-                'required',
-                Rule::in(['Yes', 'No']),
-            ],
-            'delay_reason' => [
-                'required',
-                'string',
-                'max:1000',
-                'regex:/^[^<>{}]*$/', // Prevent XSS by blocking HTML tags
-            ],
-            'voice_of_customer' => [
-                'nullable',
-                'string',
-                'max:2000',
-                'regex:/^[^<>{}]*$/', // Prevent XSS by blocking HTML tags
-            ],
+            'resolved_date' => 'required|date|before_or_equal:happy_call_date|before_or_equal:today',
+            'happy_call_date' => 'required|date|after_or_equal:resolved_date',
+            'customer_satisfied' => 'required|in:Yes,No',
+            'delay_reason' => 'required|string|max:1000',
+            'voice_of_customer' => 'nullable|string|max:2000'
         ]);
 
-        // Custom validation for date logic
-        $resolvedDate = $request->input('resolved_date');
-        $happyCallDate = $request->input('happy_call_date');
+        $resolved = Carbon::parse($request->resolved_date);
+        $happyCall = Carbon::parse($request->happy_call_date);
 
-        if ($resolvedDate && $happyCallDate) {
-            try {
-                $resolved = Carbon::parse($resolvedDate);
-                $happyCall = Carbon::parse($happyCallDate);
-                $today = Carbon::today();
-
-                // Business rule: Resolution date cannot be in the future
-                if ($resolved->isAfter($today)) {
-                    if ($request->ajax() || $request->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'Resolution date cannot be in the future.'
-                        ], 422);
-                    }
-                    return back()->withErrors(['resolved_date' => 'Resolution date cannot be in the future.']);
-                }
-
-                // Business rule: Happy call should not be more than 30 days after resolution
-                if ($happyCall->diffInDays($resolved) > 30) {
-                    if ($request->ajax() || $request->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'Happy call date should not be more than 30 days after resolution date.'
-                        ], 422);
-                    }
-                    return back()->withErrors(['happy_call_date' => 'Happy call date should not be more than 30 days after resolution date.']);
-                }
-
-                // Business rule: Resolution should not be more than 90 days ago
-                if ($resolved->diffInDays($today) > 90) {
-                    if ($request->ajax() || $request->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'Resolution date should not be more than 90 days ago.'
-                        ], 422);
-                    }
-                    return back()->withErrors(['resolved_date' => 'Resolution date should not be more than 90 days ago.']);
-                }
-            } catch (\Exception $e) {
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Invalid date format provided.'
-                    ], 422);
-                }
-                return back()->withErrors(['resolved_date' => 'Invalid date format.']);
-            }
+        if ($happyCall->diffInDays($resolved) > 30) {
+            return response()->json(['success' => false, 'error' => 'Happy call date should not be more than 30 days after resolution date.'], 422);
         }
 
-        // Use database transaction for data consistency (only for actual creation)
-        $result = DB::transaction(function () use ($request, $ticket, $ticket_number) {
-            // Create Happy Call status with validated and sanitized data
+        $result = DB::transaction(function () use ($request, $ticket) {
             return HappyCallStatus::create([
-                'ici_id'             => $ticket->id,
-                'resolved_date'      => $request->input('resolved_date'),
-                'happy_call_date'    => $request->input('happy_call_date'),
-                'customer_satisfied' => $request->input('customer_satisfied'),
-                'delay_reason'       => $request->input('delay_reason'),
-                'voice_of_customer'  => $request->input('voice_of_customer'),
+                'ici_id' => $ticket->id,
+                'resolved_date' => $request->resolved_date,
+                'happy_call_date' => $request->happy_call_date,
+                'customer_satisfied' => $request->customer_satisfied,
+                'delay_reason' => $request->delay_reason,
+                'voice_of_customer' => $request->voice_of_customer,
             ]);
         });
 
-        // Handle the response based on request type
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Happy Call submitted successfully!',
-                'happy_call_id' => $result->id
-            ]);
-        }
-
-        return back()->with([
-            'success' => 'Happy Call status saved successfully!',
-            'ticket_number' => $ticket_number
+        return response()->json([
+            'success' => true,
+            'message' => 'Happy Call submitted successfully!',
+            'happy_call_id' => $result->id
         ]);
     }
 
-    private function getCommonViewData($ticketNo = null)
+    /**
+     * Get complaint history by contact number
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getComplaintHistory(Request $request)
     {
-        $data = [
-            'serviceCenters' => ServiceCenter::orderBy('sc')->get(),
-            'complaintCategory' => ComplaintCategory::orderBy('category_name')->get(),
-            'reasonofEscalation' => EscalationReason::orderBy('reason')->get(),
-            'delayReason' => DelayReason::orderBy('reason')->get(),
-            'ici' => null,
-            'feedbacks' => collect()
-        ];
+        try {
+            $contactNo = $request->input('contact_no');
 
-        if ($ticketNo) {
-            $data['ici'] = InitialCustomerInformation::with('happyCallStatus')
-                ->where('ticket_number', $ticketNo)
-                ->first();
-                
-            if ($data['ici']) {
-                $data['feedbacks'] = Feedback::where('ici_id', $data['ici']->id)
-                    ->orderBy('created_at', 'asc')
-                    ->get();
+            if (!$contactNo) {
+                return response()->json(['error' => 'Contact number is required'], 400);
             }
-        }
 
-        return $data;
+            // Find all COMS records with the same contact number
+            $comsRecords = Coms::where('contact_number', $contactNo)->get();
+
+            if ($comsRecords->isEmpty()) {
+                return response()->json(['history' => []]);
+            }
+
+            $history = [];
+
+            foreach ($comsRecords as $coms) {
+                // Get associated ICI record if exists
+                $ici = InitialCustomerInformation::where('complaint_id', $coms->id)->first();
+
+                $history[] = [
+                    'complaint_number' => $coms->complaint_number,
+                    'job' => $coms->job,
+                    'coms_complaint_date' => $coms->coms_complaint_date,
+                    'job_type' => $coms->job_type,
+                    'customer_name' => $coms->customer_name,
+                    'technician_name' => $coms->technician_name,
+                    'date_of_purchase' => $coms->date_of_purchase,
+                    'product' => $coms->product,
+                    'job_status' => $coms->job_status,
+                    'problem' => $coms->problem,
+                    'work_done' => $coms->work_done,
+                    'ticket_number' => $ici ? $ici->ticket_number : null,
+                    'case_status' => $ici ? $ici->case_status : null,
+                    'escalation_level' => $ici ? $ici->escalation_level : null,
+                    'complaint_escalation_date' => $ici ? $ici->complaint_escalation_date : null,
+                ];
+            }
+
+            return response()->json(['history' => $history]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching complaint history', [
+                'error' => $e->getMessage(),
+                'contact_no' => $request->input('contact_no'),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'error' => 'Unable to fetch complaint history'
+            ], 500);
+        }
     }
+
+
 }

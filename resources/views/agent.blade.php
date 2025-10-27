@@ -103,6 +103,25 @@
                 </div>
             </div>
 
+            <!-- Complaint History Accordion -->
+            <div class="accordion mt-4" id="complaintHistoryAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="historyHeading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#historyCollapse" aria-expanded="false" aria-controls="historyCollapse">
+                            <i class="bi bi-clock-history me-2"></i>
+                            Complaint History
+                        </button>
+                    </h2>
+                    <div id="historyCollapse" class="accordion-collapse collapse" aria-labelledby="historyHeading" data-bs-parent="#complaintHistoryAccordion">
+                        <div class="accordion-body">
+                            <div id="historyContent">
+                                <p class="text-muted">No history available. Search for a complaint to see history.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <hr class="my-4">
 
             <!-- Ticket Status Information -->
@@ -460,6 +479,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('technician_name:', document.getElementById('technician_name').value);
                 console.log('purchase_date:', document.getElementById('purchase_date').value);
 
+                // Fetch and display complaint history for the contact number
+                if (data.ContactNo) {
+                    fetchComplaintHistory(data.ContactNo);
+                }
+
             })
             .catch(error => {
                 console.error('Fetch failed with error:', error);
@@ -498,6 +522,79 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
                 submitBtn.disabled = true;
             }
+        });
+    }
+
+    // Function to fetch and display complaint history
+    function fetchComplaintHistory(contactNo) {
+        console.log('Fetching complaint history for contact:', contactNo);
+
+        fetch('{{ route("complaint.history") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                contact_no: contactNo
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const historyContent = document.getElementById('historyContent');
+
+            if (data.error) {
+                historyContent.innerHTML = '<p class="text-danger">Error loading history: ' + data.error + '</p>';
+                return;
+            }
+
+            if (!data.history || data.history.length === 0) {
+                historyContent.innerHTML = '<p class="text-muted">No previous complaints found for this contact number.</p>';
+                return;
+            }
+
+            // Build history HTML
+            let historyHtml = '<div class="table-responsive"><table class="table table-striped table-sm">';
+            historyHtml += '<thead><tr>';
+            historyHtml += '<th>Complaint #</th>';
+            historyHtml += '<th>Job #</th>';
+            historyHtml += '<th>Date</th>';
+            historyHtml += '<th>Product</th>';
+            historyHtml += '<th>Status</th>';
+            historyHtml += '<th>Ticket #</th>';
+            historyHtml += '<th>Case Status</th>';
+            historyHtml += '</tr></thead><tbody>';
+
+            data.history.forEach(item => {
+                historyHtml += '<tr>';
+                historyHtml += '<td>' + (item.complaint_number || 'N/A') + '</td>';
+                historyHtml += '<td>' + (item.job || 'N/A') + '</td>';
+                historyHtml += '<td>' + (item.coms_complaint_date || 'N/A') + '</td>';
+                historyHtml += '<td>' + (item.product || 'N/A') + '</td>';
+                historyHtml += '<td>' + (item.job_status || 'N/A') + '</td>';
+                historyHtml += '<td>' + (item.ticket_number || 'N/A') + '</td>';
+                historyHtml += '<td>' + (item.case_status || 'N/A') + '</td>';
+                historyHtml += '</tr>';
+            });
+
+            historyHtml += '</tbody></table></div>';
+            historyHtml += '<small class="text-muted">Showing ' + data.history.length + ' complaint(s) for this contact number.</small>';
+
+            historyContent.innerHTML = historyHtml;
+
+            // Auto-expand the accordion if there's history
+            const historyCollapse = document.getElementById('historyCollapse');
+            if (historyCollapse && data.history.length > 0) {
+                const bsCollapse = new bootstrap.Collapse(historyCollapse, {
+                    show: true
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching complaint history:', error);
+            const historyContent = document.getElementById('historyContent');
+            historyContent.innerHTML = '<p class="text-danger">Failed to load complaint history.</p>';
         });
     }
 
@@ -547,6 +644,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Clear stored complaint number
             window.complaintNumber = null;
+
+            // Reset history accordion
+            const historyContent = document.getElementById('historyContent');
+            if (historyContent) {
+                historyContent.innerHTML = '<p class="text-muted">No history available. Search for a complaint to see history.</p>';
+            }
+            const historyCollapse = document.getElementById('historyCollapse');
+            if (historyCollapse) {
+                const bsCollapse = bootstrap.Collapse.getInstance(historyCollapse);
+                if (bsCollapse) {
+                    bsCollapse.hide();
+                }
+            }
 
         }, 1000);
     @endif

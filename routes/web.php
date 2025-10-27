@@ -17,9 +17,15 @@ use App\Http\Controllers\ProfileController;
 Auth::routes();
 
 Route::post('/fetch-coms-data', [App\Http\Controllers\AgentController::class, 'fetchComsData'])->middleware('auth')->name('fetch.coms');
+
+// Agent routes
+Route::middleware(['auth', 'role:Agent'])->group(function () {
+    Route::post('/home-agent/fetch-coms', [AgentController::class, 'fetchComsData'])->name('agent.fetch.coms');
+});
 Route::post('/check-complaint-ticket', [App\Http\Controllers\AgentController::class, 'checkComplaintTicket'])->middleware('auth')->name('check.complaint.ticket');
 Route::post('/fetch-ticket-info', [App\Http\Controllers\AgentController::class, 'fetchTicketInfo'])->middleware('auth')->name('fetch.ticket.info');
 Route::get('/generate-ticket-number', [App\Http\Controllers\AgentController::class, 'getTicketNumber'])->middleware('auth')->name('generate.ticket.number');
+Route::post('/complaint-history', [App\Http\Controllers\AgentController::class, 'getComplaintHistory'])->middleware('auth')->name('complaint.history');
 
 // Mention routes - accessible to all authenticated users
 Route::middleware('auth')->group(function () {
