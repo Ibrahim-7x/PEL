@@ -4,30 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class InitialCustomerInformationAuditLog extends Model
+class InitialCustomerInformationLog extends Model
 {
-    protected $table = 'initial_customer_information_audit_logs';
+    protected $table = 'ici_logs';
 
     protected $fillable = [
         'complaint_number',
         'ticket_number',
         'action',
+        'case_status',
         'escalation_level',
-        'old_values',
-        'new_values',
-        'changed_fields',
-        'user_name',
-        'user_role',
+        'voice_of_customers',
         'user_id',
-        'notes',
-        'action_timestamp',
-    ];
-
-    protected $casts = [
-        'old_values' => 'array',
-        'new_values' => 'array',
-        'changed_fields' => 'array',
-        'action_timestamp' => 'datetime',
     ];
 
     /**
@@ -60,13 +48,5 @@ class InitialCustomerInformationAuditLog extends Model
     public function scopeByAction($query, $action)
     {
         return $query->where('action', $action);
-    }
-
-    /**
-     * Scope to filter by date range
-     */
-    public function scopeDateRange($query, $startDate, $endDate)
-    {
-        return $query->whereBetween('action_timestamp', [$startDate, $endDate]);
     }
 }

@@ -4,6 +4,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class InitialCustomerInformation extends Model
 {
@@ -23,7 +24,33 @@ class InitialCustomerInformation extends Model
         'voice_of_customer',
         'user_id',
     ];
- 
+
+    protected static function booted()
+    {
+        static::created(function ($model) {
+            self::logAction($model, 'CREATED');
+        });
+
+        static::updated(function ($model) {
+            self::logAction($model, 'UPDATED');
+        });
+    }
+
+    private static function logAction($model, $action)
+    {
+        $user = Auth::user();
+
+        InitialCustomerInformationLog::create([
+            'complaint_number' => $model->complaint_id,
+            'ticket_number' => $model->ticket_number,
+            'action' => $action,
+            'case_status' => $model->case_status,
+            'escalation_level' => $model->escalation_level,
+            'voice_of_customers' => $model->voice_of_customer,
+            'user_id' => $user ? $user->id : null,
+        ]);
+    }
+
     public function feedbacks()
     {
         return $this->hasMany(Feedback::class, 'ici_id');
