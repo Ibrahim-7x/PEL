@@ -267,6 +267,18 @@
             </div>
 
             <script>
+                // Helper function to extract date part from datetime strings
+                function extractDatePart(dateTimeString) {
+                    if (!dateTimeString) return '';
+                    let dateStr = dateTimeString;
+                    if (dateTimeString.includes('T')) {
+                        dateStr = dateTimeString.split('T')[0];
+                    } else if (dateTimeString.includes(' ')) {
+                        dateStr = dateTimeString.split(' ')[0];
+                    }
+                    return dateStr;
+                }
+
                 // Function to calculate and update aging
                 function updateAging(complaintDate) {
                     if (complaintDate) {
@@ -506,15 +518,23 @@
 
                         // Populate COMS fields with data from database
                         if (comsData.JobNo) document.getElementById('job_number').value = comsData.JobNo;
-                        if (comsData.JobDate) {
-                            document.getElementById('coms_complaint_date').value = comsData.JobDate;
-                            updateAging(comsData.JobDate);
+                        if (comsData.COMSComplaintDate || comsData.JobDate) {
+                            const complaintDateRaw = comsData.COMSComplaintDate || comsData.JobDate;
+                            const complaintDateStr = extractDatePart(complaintDateRaw);
+                            document.getElementById('coms_complaint_date').value = complaintDateStr;
+                            updateAging(complaintDateStr);
                         }
                         if (comsData.JobType) document.getElementById('job_type').value = comsData.JobType;
                         if (comsData.CustomerName) document.getElementById('customer_name').value = comsData.CustomerName;
                         if (comsData.ContactNo) document.getElementById('contact_no').value = comsData.ContactNo;
-                        if (comsData.TechnicianName) document.getElementById('technician_name').value = comsData.TechnicianName;
-                        if (comsData.PurchaseDate) document.getElementById('purchase_date').value = comsData.PurchaseDate;
+                        if (comsData.TCN_NAME || comsData.TechnicianName) {
+                            document.getElementById('technician_name').value = comsData.TCN_NAME || comsData.TechnicianName;
+                        }
+                        if (comsData.DateofPurchase || comsData.PurchaseDate) {
+                            const purchaseDateRaw = comsData.DateofPurchase || comsData.PurchaseDate;
+                            const purchaseDateStr = extractDatePart(purchaseDateRaw);
+                            document.getElementById('purchase_date').value = purchaseDateStr;
+                        }
                         if (comsData.Product) document.getElementById('product').value = comsData.Product;
                         if (comsData.JobStatus) document.getElementById('job_status').value = comsData.JobStatus;
                         if (comsData.Problem) document.getElementById('problem').value = comsData.Problem;

@@ -2,8 +2,30 @@
 function setValue(id, value) {
     const element = document.getElementById(id);
     if (element) {
-        element.value = value || '';
+        // For date inputs, ensure we only set valid date strings
+        if (element.type === 'date') {
+            // Only set value if it's a valid date string (yyyy-mm-dd format)
+            if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                element.value = value;
+            } else {
+                element.value = '';
+            }
+        } else {
+            element.value = value || '';
+        }
     }
+}
+
+// Helper function to extract date part from datetime strings
+function extractDatePart(dateTimeString) {
+    if (!dateTimeString) return '';
+    let dateStr = dateTimeString;
+    if (dateTimeString.includes('T')) {
+        dateStr = dateTimeString.split('T')[0];
+    } else if (dateTimeString.includes(' ')) {
+        dateStr = dateTimeString.split(' ')[0];
+    }
+    return dateStr;
 }
 
 // Add event listener to search button
@@ -60,12 +82,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     // Populate form fields with API data
                     setValue('job_number', data.JobNo || '');
-                    setValue('coms_complaint_date', data.COMSComplaintDate ? data.COMSComplaintDate.split('T')[0] : '');
+                    setValue('coms_complaint_date', extractDatePart(data.COMSComplaintDate || data.ComplaintDate || ''));
                     setValue('job_type', data.JobType || '');
                     setValue('customer_name', data.CustomerName || '');
                     setValue('contact_no', data.ContactNo || '');
-                    setValue('technician_name', data.TechnicianName || '');
-                    setValue('purchase_date', data.DateofPurchase ? data.DateofPurchase.split('T')[0] : '');
+                    setValue('technician_name', data.TCN_NAME || data.TechnicianName || '');
+                    setValue('purchase_date', extractDatePart(data.DateofPurchase || data.PurchaseDate || ''));
                     setValue('product', data.Product || '');
                     setValue('job_status', data.JobStatus || '');
                     setValue('problem', data.Problem || '');

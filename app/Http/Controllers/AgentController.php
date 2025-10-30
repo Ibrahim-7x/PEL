@@ -18,7 +18,7 @@ use App\Models\InitialCustomerInformation;
 use App\Models\Feedback;
 use App\Models\HappyCallStatus;
 use App\Models\DelayReason;
-use App\Models\InitialCustomerInformationAuditLog;
+use App\Models\InitialCustomerInformationLog;
 use App\Models\Mention;
 use App\Models\User;
 use App\Models\Coms;
@@ -312,12 +312,12 @@ class AgentController extends Controller
                 return response()->json([
                     'ComplaintNo' => $existingRecord->complaint_number,
                     'JobNo' => $existingRecord->job,
-                    'JobDate' => $existingRecord->coms_complaint_date,
+                    'COMSComplaintDate' => $existingRecord->coms_complaint_date,
                     'JobType' => $existingRecord->job_type,
                     'CustomerName' => $existingRecord->customer_name,
                     'ContactNo' => $existingRecord->contact_number,
-                    'TechnicianName' => $existingRecord->technician_name,
-                    'PurchaseDate' => $existingRecord->date_of_purchase,
+                    'TCN_NAME' => $existingRecord->technician_name,
+                    'DateofPurchase' => $existingRecord->date_of_purchase,
                     'Product' => $existingRecord->product,
                     'JobStatus' => $existingRecord->job_status,
                     'Problem' => $existingRecord->problem,
@@ -325,33 +325,55 @@ class AgentController extends Controller
                 ]);
             }
 
-            // Data not in database, fetch from API but DO NOT STORE (only for display)
+            // Data not in database, fetch from API and store
             $response = Http::timeout(10)->withoutVerifying()->post(
                 'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo)
             );
 
             if ($response->successful()) {
-                try {
-                    $data = $response->json();
-                    \Log::info('COMS API fetchComsData - Raw response data', [
-                        'complaint_number' => $complaintNo,
-                        'data' => $data
-                    ]);
-                } catch (\Exception $e) {
-                    return response()->json(['error' => 'Invalid response from COMS API'], 502);
-                }
+                $data = $response->json();
 
                 if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
                     $complaintData = $data['ComplaintDetails'][0];
 
-                    \Log::info('COMS API fetchComsData - ComplaintDetails[0] data (not stored)', [
-                        'complaint_number' => $complaintNo,
-                        'complaint_data' => $complaintData,
-                        'keys' => array_keys($complaintData)
+                    // Store the API data in database
+                    $comsRecord = Coms::create([
+                        'complaint_number' => $complaintData['ComplaintNo'] ?? $complaintNo,
+                        'job' => $complaintData['JobNo'] ?? '',
+                        'coms_complaint_date' => isset($complaintData['COMSComplaintDate']) ? \Carbon\Carbon::parse($complaintData['COMSComplaintDate'])->format('Y-m-d') : (isset($complaintData['ComplaintDate']) ? \Carbon\Carbon::parse($complaintData['ComplaintDate'])->format('Y-m-d') : null),
+                        'job_type' => $complaintData['JobType'] ?? '',
+                        'customer_name' => $complaintData['CustomerName'] ?? '',
+                        'contact_number' => $complaintData['ContactNo'] ?? '',
+                        'technician_name' => $complaintData['TCN_NAME'] ?? $complaintData['TechnicianName'] ?? '',
+                        'date_of_purchase' => isset($complaintData['DateofPurchase']) ? \Carbon\Carbon::parse($complaintData['DateofPurchase'])->format('Y-m-d') : (isset($complaintData['PurchaseDate']) ? \Carbon\Carbon::parse($complaintData['PurchaseDate'])->format('Y-m-d') : null),
+                        'product' => $complaintData['Product'] ?? '',
+                        'job_status' => $complaintData['JobStatus'] ?? '',
+                        'problem' => $complaintData['Problem'] ?? '',
+                        'work_done' => $complaintData['WorkDone'] ?? '',
                     ]);
-
-                    // Return the API response data WITHOUT storing in database
-                    return response()->json($complaintData);
+    
+                    \Log::info('COMS data stored in database on fetch', [
+                        'complaint_number' => $complaintNo,
+                        'record_id' => $comsRecord->id
+                    ]);
+    
+                    // Return the API response data mapped to expected format
+                    $mappedData = [
+                        'ComplaintNo' => $complaintData['ComplaintNo'] ?? '',
+                        'JobNo' => $complaintData['JobNo'] ?? '',
+                        'COMSComplaintDate' => $complaintData['COMSComplaintDate'] ?? $complaintData['ComplaintDate'] ?? '',
+                        'JobType' => $complaintData['JobType'] ?? '',
+                        'CustomerName' => $complaintData['CustomerName'] ?? '',
+                        'ContactNo' => $complaintData['ContactNo'] ?? '',
+                        'TCN_NAME' => $complaintData['TCN_NAME'] ?? $complaintData['TechnicianName'] ?? '',
+                        'DateofPurchase' => $complaintData['DateofPurchase'] ?? $complaintData['PurchaseDate'] ?? '',
+                        'Product' => $complaintData['Product'] ?? '',
+                        'JobStatus' => $complaintData['JobStatus'] ?? '',
+                        'Problem' => $complaintData['Problem'] ?? '',
+                        'WorkDone' => $complaintData['WorkDone'] ?? '',
+                    ];
+    
+                    return response()->json($mappedData);
                 } else {
                     return response()->json(['error' => 'Complaint not found or invalid response'], 404);
                 }
@@ -445,7 +467,6 @@ class AgentController extends Controller
 
     /**
      * Check if complaint number exists and return ticket information
-     * This method is READ-ONLY and does NOT update database
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -464,7 +485,7 @@ class AgentController extends Controller
             $existingTicket = $comsRecord ? InitialCustomerInformation::where('complaint_id', $comsRecord->id)->first() : null;
 
             if ($existingTicket) {
-                // READ-ONLY: Just return current data, don't update escalation level
+                // Update escalation level automatically on each check
                 $currentEscalation = $existingTicket->escalation_level;
                 $nextEscalation = $this->getNextEscalationLevel($currentEscalation);
 
@@ -478,14 +499,14 @@ class AgentController extends Controller
                     'current_escalation' => $currentEscalation,
                     'next_escalation' => $nextEscalation,
                     'display_escalation' => $nextEscalation, // Show next level in form
-                    'escalation_updated' => false, // No update happens here anymore
+                    'escalation_updated' => true, // Escalation was updated
                     'ticket_data' => [
                         'service_center' => $existingTicket->service_center,
                         'case_status' => $existingTicket->case_status,
                         'complaint_category' => $existingTicket->complaint_category,
                         'agent_name' => $existingTicket->agent_name,
                         'reason_of_escalation' => $existingTicket->reason_of_escalation,
-                        'escalation_level' => $currentEscalation, // Current database value (unchanged)
+                        'escalation_level' => $nextEscalation, // Updated value
                         'voice_of_customer' => $existingTicket->voice_of_customer,
                         'complaint_escalation_date' => $existingTicket->complaint_escalation_date
                             ? Carbon::parse($existingTicket->complaint_escalation_date)->format('Y-m-d')
@@ -620,12 +641,12 @@ class AgentController extends Controller
                 $comsRecord = Coms::create([
                     'complaint_number' => $complaintData['ComplaintNo'] ?? $complaintNumber,
                     'job' => $complaintData['JobNo'] ?? '',
-                    'coms_complaint_date' => isset($complaintData['COMSComplaintDate']) ? \Carbon\Carbon::parse($complaintData['COMSComplaintDate'])->format('Y-m-d') : null,
+                    'coms_complaint_date' => isset($complaintData['COMSComplaintDate']) ? \Carbon\Carbon::parse($complaintData['COMSComplaintDate'])->format('Y-m-d') : (isset($complaintData['ComplaintDate']) ? \Carbon\Carbon::parse($complaintData['ComplaintDate'])->format('Y-m-d') : null),
                     'job_type' => $complaintData['JobType'] ?? '',
                     'customer_name' => $complaintData['CustomerName'] ?? '',
                     'contact_number' => $complaintData['ContactNo'] ?? '',
-                    'technician_name' => $complaintData['TCN_NAME'] ?? '',
-                    'date_of_purchase' => isset($complaintData['DateofPurchase']) ? \Carbon\Carbon::parse($complaintData['DateofPurchase'])->format('Y-m-d') : null,
+                    'technician_name' => $complaintData['TCN_NAME'] ?? $complaintData['TechnicianName'] ?? '',
+                    'date_of_purchase' => isset($complaintData['DateofPurchase']) ? \Carbon\Carbon::parse($complaintData['DateofPurchase'])->format('Y-m-d') : (isset($complaintData['PurchaseDate']) ? \Carbon\Carbon::parse($complaintData['PurchaseDate'])->format('Y-m-d') : null),
                     'product' => $complaintData['Product'] ?? '',
                     'job_status' => $complaintData['JobStatus'] ?? '',
                     'problem' => $complaintData['Problem'] ?? '',
@@ -686,28 +707,21 @@ class AgentController extends Controller
      * @param string $ticketNo
      * @param string $action
      * @param string $escalationLevel
-     * @param array|null $oldValues
-     * @param array|null $newValues
-     * @param array|null $changedFields
-     * @param string|null $notes
+     * @param string $caseStatus
+     * @param string $voiceOfCustomer
      * @return void
      */
-    private function logActivity($complaintNumber, $ticketNo, $action, $escalationLevel, $oldValues = null, $newValues = null, $changedFields = null, $notes = null)
+    private function logActivity($complaintNumber, $ticketNo, $action, $escalationLevel, $caseStatus, $voiceOfCuttomer)
     {
         try {
-            InitialCustomerInformationAuditLog::create([
+            InitialCustomerInformationLog::create([
                 'complaint_number' => $complaintNumber,
                 'ticket_number' => $ticketNo,
                 'action' => $action,
                 'escalation_level' => $escalationLevel,
-                'old_values' => $oldValues,
-                'new_values' => $newValues,
-                'changed_fields' => $changedFields,
-                'user_name' => auth()->user()->name,
-                'user_role' => auth()->user()->role,
+                'case_status' => $caseStatus,
+                'voice_of_customer' => $voiceOfCustomer,
                 'user_id' => auth()->id(),
-                'notes' => $notes,
-                'action_timestamp' => now(),
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to log activity', [
@@ -911,10 +925,8 @@ class AgentController extends Controller
     public function saveHappyCallStatus(Request $request, string $ticket_number)
     {
         try {
-            // Find ticket with optimized query (select only needed columns)
-            $ticket = InitialCustomerInformation::select('id', 'ticket_number')
-                ->where('ticket_number', $ticket_number)
-                ->first();
+            // Find ticket
+            $ticket = InitialCustomerInformation::where('ticket_number', $ticket_number)->first();
 
             // Check if this is a status check (no form data) vs actual form submission
             $hasFormData = $request->filled(['resolved_date', 'happy_call_date', 'customer_satisfied', 'delay_reason']);
@@ -962,10 +974,8 @@ class AgentController extends Controller
             return response()->json(['success' => false, 'error' => 'Ticket not found.'], 404);
         }
 
-        // Check for existing Happy Call with optimized query
-        $existingHappyCall = HappyCallStatus::select('id')
-            ->where('ici_id', $ticket->id)
-            ->exists();
+        // Check for existing Happy Call
+        $existingHappyCall = HappyCallStatus::where('ici_id', $ticket->id)->exists();
 
         if ($existingHappyCall) {
             return response()->json(['success' => false, 'error' => 'Happy Call already exists for this ticket.'], 409);

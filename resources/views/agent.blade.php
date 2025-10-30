@@ -242,9 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (searchComplaintBtn && complaintNumberInput) {
         searchComplaintBtn.addEventListener('click', function() {
-            console.log('Search button clicked');
             const complaintNumber = complaintNumberInput.value.trim();
-            console.log('Complaint number:', complaintNumber);
 
             if (!complaintNumber) {
                 alert('Please enter a complaint number');
@@ -255,7 +253,6 @@ document.addEventListener('DOMContentLoaded', function() {
             searchComplaintBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
             searchComplaintBtn.disabled = true;
 
-            console.log('Making fetch request to:', '{{ route("fetch.coms") }}');
             // Make AJAX request to fetch COMS data
             fetch('{{ route("fetch.coms") }}', {
                 method: 'POST',
@@ -269,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             })
             .then(response => {
-                console.log('Fetch response status:', response.status);
+                // Handle response
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -451,21 +448,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Populate form fields with the fetched data
-                console.log('Populating form fields with data keys:', Object.keys(data));
-                console.log('Full data object:', data);
                 if (data.JobNo) document.getElementById('job_number').value = data.JobNo;
-                if (data.COMSComplaintDate) {
-                    // Extract date part from datetime string (format: 2025-01-13T09:10:07)
-                    const dateStr = data.COMSComplaintDate.split('T')[0];
+                if (data.COMSComplaintDate || data.ComplaintDate) {
+                    // Extract date part from datetime string (format: 2025-01-13T09:10:07 or 2025-01-13 00:00:00)
+                    const complaintDateRaw = data.COMSComplaintDate || data.ComplaintDate;
+                    let dateStr = complaintDateRaw;
+                    if (complaintDateRaw.includes('T')) {
+                        dateStr = complaintDateRaw.split('T')[0];
+                    } else if (complaintDateRaw.includes(' ')) {
+                        dateStr = complaintDateRaw.split(' ')[0];
+                    }
                     document.getElementById('coms_complaint_date').value = dateStr;
                 }
                 if (data.JobType) document.getElementById('job_type').value = data.JobType;
                 if (data.CustomerName) document.getElementById('customer_name').value = data.CustomerName;
                 if (data.ContactNo) document.getElementById('contact_no').value = data.ContactNo;
-                if (data.TCN_NAME) document.getElementById('technician_name').value = data.TCN_NAME;
-                if (data.DateofPurchase) {
+                if (data.TCN_NAME || data.TechnicianName) {
+                    const techName = data.TCN_NAME || data.TechnicianName;
+                    document.getElementById('technician_name').value = techName;
+                }
+                if (data.DateofPurchase || data.PurchaseDate) {
                     // Extract date part from datetime string
-                    const purchaseDateStr = data.DateofPurchase.split('T')[0];
+                    const purchaseDateRaw = data.DateofPurchase || data.PurchaseDate;
+                    let purchaseDateStr = purchaseDateRaw;
+                    if (purchaseDateRaw.includes('T')) {
+                        purchaseDateStr = purchaseDateRaw.split('T')[0];
+                    } else if (purchaseDateRaw.includes(' ')) {
+                        purchaseDateStr = purchaseDateRaw.split(' ')[0];
+                    }
                     document.getElementById('purchase_date').value = purchaseDateStr;
                 }
                 if (data.Product) document.getElementById('product').value = data.Product;
@@ -473,11 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.Problem) document.getElementById('problem').value = data.Problem;
                 if (data.WorkDone) document.getElementById('workdone').value = data.WorkDone;
 
-                console.log('Fields populated - checking values:');
-                console.log('job_number:', document.getElementById('job_number').value);
-                console.log('coms_complaint_date:', document.getElementById('coms_complaint_date').value);
-                console.log('technician_name:', document.getElementById('technician_name').value);
-                console.log('purchase_date:', document.getElementById('purchase_date').value);
+                // Fields populated successfully
 
                 // Fetch and display complaint history for the contact number
                 if (data.ContactNo) {
@@ -486,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             })
             .catch(error => {
-                console.error('Fetch failed with error:', error);
+                // Handle fetch error
                 // Reset button state
                 searchComplaintBtn.innerHTML = '<i class="bi bi-search"></i>';
                 searchComplaintBtn.disabled = false;
@@ -527,7 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to fetch and display complaint history
     function fetchComplaintHistory(contactNo) {
-        console.log('Fetching complaint history for contact:', contactNo);
+        // Fetch complaint history
 
         fetch('{{ route("complaint.history") }}', {
             method: 'POST',
@@ -592,7 +598,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error fetching complaint history:', error);
+            // Handle history fetch error
             const historyContent = document.getElementById('historyContent');
             historyContent.innerHTML = '<p class="text-danger">Failed to load complaint history.</p>';
         });
