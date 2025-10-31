@@ -540,6 +540,18 @@
                         if (comsData.Problem) document.getElementById('problem').value = comsData.Problem;
                         if (comsData.WorkDone) document.getElementById('workdone').value = comsData.WorkDone;
 
+                        // Clear ICI form fields when new complaint is searched
+                        document.getElementById('ticket_number').value = '';
+                        document.getElementById('service_center').value = '';
+                        document.getElementById('complaint_escalation_date').value = '';
+                        document.getElementById('case_status').value = '';
+                        document.getElementById('aging').value = '';
+                        document.getElementById('complaint_category').value = '';
+                        document.getElementById('agent_name').value = '';
+                        document.getElementById('reason_of_escalation').value = '';
+                        document.getElementById('escalation_level').value = '';
+                        document.getElementById('voice_of_customer').value = '';
+
                         // Now fetch ticket information for this complaint
                         return fetch("{{ route('fetch.ticket.info') }}", {
                             method: "POST",
