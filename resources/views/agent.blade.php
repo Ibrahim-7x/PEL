@@ -175,6 +175,7 @@
                             <option value="Sales Return">Sales Return</option>
                             <option value="Pending from Customer">Pending from Customer</option>
                             <option value="NHC">NHC</option>
+                            <option value="Closed">Closed</option>
                         </select>
                     </div>
 

@@ -325,7 +325,7 @@ class AgentController extends Controller
                 ]);
             }
 
-            // Data not in database, fetch from API and store
+            // Data not in database, fetch from API but DO NOT STORE during search operations
             $response = Http::timeout(10)->withoutVerifying()->post(
                 'https://pelcareapi.pel.com.pk/GetComplaintDetailsEU?complaintno=' . urlencode($complaintNo)
             );
@@ -336,28 +336,7 @@ class AgentController extends Controller
                 if ($data['Success'] === true && isset($data['ComplaintDetails'][0])) {
                     $complaintData = $data['ComplaintDetails'][0];
 
-                    // Store the API data in database
-                    $comsRecord = Coms::create([
-                        'complaint_number' => $complaintData['ComplaintNo'] ?? $complaintNo,
-                        'job' => $complaintData['JobNo'] ?? '',
-                        'coms_complaint_date' => isset($complaintData['COMSComplaintDate']) ? \Carbon\Carbon::parse($complaintData['COMSComplaintDate'])->format('Y-m-d') : (isset($complaintData['ComplaintDate']) ? \Carbon\Carbon::parse($complaintData['ComplaintDate'])->format('Y-m-d') : null),
-                        'job_type' => $complaintData['JobType'] ?? '',
-                        'customer_name' => $complaintData['CustomerName'] ?? '',
-                        'contact_number' => $complaintData['ContactNo'] ?? '',
-                        'technician_name' => $complaintData['TCN_NAME'] ?? $complaintData['TechnicianName'] ?? '',
-                        'date_of_purchase' => isset($complaintData['DateofPurchase']) ? \Carbon\Carbon::parse($complaintData['DateofPurchase'])->format('Y-m-d') : (isset($complaintData['PurchaseDate']) ? \Carbon\Carbon::parse($complaintData['PurchaseDate'])->format('Y-m-d') : null),
-                        'product' => $complaintData['Product'] ?? '',
-                        'job_status' => $complaintData['JobStatus'] ?? '',
-                        'problem' => $complaintData['Problem'] ?? '',
-                        'work_done' => $complaintData['WorkDone'] ?? '',
-                    ]);
-    
-                    \Log::info('COMS data stored in database on fetch', [
-                        'complaint_number' => $complaintNo,
-                        'record_id' => $comsRecord->id
-                    ]);
-    
-                    // Return the API response data mapped to expected format
+                    // Return the API response data mapped to expected format WITHOUT storing in database
                     $mappedData = [
                         'ComplaintNo' => $complaintData['ComplaintNo'] ?? '',
                         'JobNo' => $complaintData['JobNo'] ?? '',
@@ -372,7 +351,7 @@ class AgentController extends Controller
                         'Problem' => $complaintData['Problem'] ?? '',
                         'WorkDone' => $complaintData['WorkDone'] ?? '',
                     ];
-    
+
                     return response()->json($mappedData);
                 } else {
                     return response()->json(['error' => 'Complaint not found or invalid response'], 404);
