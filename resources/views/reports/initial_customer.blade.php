@@ -162,10 +162,10 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="export-form-card">
-                <form method="POST" action="{{ route('export.feedback.download') }}">
+                <form method="POST" action="{{ route('export.initial_customer.download') }}">
                     @csrf
                     <div class="row g-4">
-                        <div class="col-md-6">
+                        <div class="col-md-6">  
                             <div class="form-group">
                                 <label class="form-label">
                                     <i class="bi bi-calendar-event me-2"></i>Start Date

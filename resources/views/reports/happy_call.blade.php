@@ -164,7 +164,7 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="export-form-card">
-                <form method="POST" action="{{ route('export.feedback.download') }}">
+                <form method="POST" action="{{ route('export.happy_call.download') }}">
                     @csrf
                     <div class="row g-4">
                         <div class="col-md-6">

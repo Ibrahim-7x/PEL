@@ -175,6 +175,7 @@ class ManagementController extends Controller
             $record = \DB::table('initial_customer_information')
                         ->join('coms', 'initial_customer_information.complaint_id', '=', 'coms.id')
                         ->where('coms.complaint_number', $complaintNumber)
+                        ->where('initial_customer_information.case_status', '!=', 'Closed')
                         ->select('initial_customer_information.*', 'coms.complaint_number')
                         ->first();
 
