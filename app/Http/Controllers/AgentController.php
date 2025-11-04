@@ -661,9 +661,12 @@ class AgentController extends Controller
                 return response()->json(['error' => 'Complaint number is required'], 400);
             }
 
-            // Check if ticket exists for this complaint number
+            // Check if ticket exists for this complaint number (only non-closed tickets)
             $comsRecord = Coms::where('complaint_number', $complaintNumber)->first();
-            $existingTicket = $comsRecord ? InitialCustomerInformation::where('complaint_id', $comsRecord->id)->first() : null;
+            $existingTicket = $comsRecord ? InitialCustomerInformation::where('complaint_id', $comsRecord->id)
+                ->where('case_status', '!=', 'Closed')
+                ->orderBy('created_at', 'desc')
+                ->first() : null;
 
             if ($existingTicket) {
                 // Check if happy call exists for this ticket
