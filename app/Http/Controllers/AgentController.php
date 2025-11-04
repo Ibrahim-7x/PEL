@@ -82,6 +82,28 @@ class AgentController extends Controller
         $comsRecord = $this->fetchAndStoreComsData($complaintNumber);
         $existingTicket = InitialCustomerInformation::where('complaint_id', $comsRecord->id)->first();
 
+        // Check if ANY closed ticket exists for this complaint
+        $hasClosedTicket = InitialCustomerInformation::where('complaint_id', $comsRecord->id)
+            ->where('case_status', 'Closed')
+            ->exists();
+
+        if ($hasClosedTicket) {
+            // If there are closed tickets, check if there's also an open ticket (not closed)
+            $openTicket = InitialCustomerInformation::where('complaint_id', $comsRecord->id)
+                ->where('case_status', '!=', 'Closed')
+                ->orderBy('created_at', 'desc') // Get the most recent open ticket
+                ->first();
+
+            if ($openTicket) {
+                // There's an open ticket, so update it instead of creating new
+                $existingTicket = $openTicket;
+            } else {
+                // No open ticket exists, ALWAYS create a new one for complaints with closed tickets
+                $existingTicket = null;
+                $request->merge(['ticket_number' => $this->generateTicketNumber()]);
+            }
+        }
+
         $iciData = [
             'user_id' => auth()->id(),
             'ticket_number' => $request->ticket_number,
@@ -399,6 +421,46 @@ class AgentController extends Controller
     }
 
     /**
+     * Check if existing ticket for complaint is closed and create new ticket if needed
+     *
+     * @param string $complaintNumber
+     * @return string The ticket number to use (existing or new)
+     */
+    private function checkClosedStatusAndCreateNewTicket($complaintNumber)
+    {
+        try {
+            // Find COMS record for the complaint number
+            $comsRecord = Coms::where('complaint_number', $complaintNumber)->first();
+
+            if (!$comsRecord) {
+                // No COMS record found, generate new ticket
+                return $this->generateTicketNumber();
+            }
+
+            // Check if there's an existing ICI record for this complaint
+            $existingTicket = InitialCustomerInformation::where('complaint_id', $comsRecord->id)->first();
+
+            if ($existingTicket && $existingTicket->case_status === 'Closed') {
+                // Case is closed, generate a new ticket number for a new ICI record
+                return $this->generateTicketNumber();
+            }
+
+            // Case is not closed or no existing ticket, return existing ticket number or generate new
+            return $existingTicket ? $existingTicket->ticket_number : $this->generateTicketNumber();
+
+        } catch (\Exception $e) {
+            Log::error('Error in checkClosedStatusAndCreateNewTicket', [
+                'error' => $e->getMessage(),
+                'complaint_number' => $complaintNumber,
+                'user_id' => auth()->id(),
+            ]);
+
+            // Fallback: generate new ticket number
+            return $this->generateTicketNumber();
+        }
+    }
+
+    /**
      * Generate a unique ticket number in the format YY-NNNN with yearly reset
      *
      * @return string
@@ -464,6 +526,66 @@ class AgentController extends Controller
             $existingTicket = $comsRecord ? InitialCustomerInformation::where('complaint_id', $comsRecord->id)->first() : null;
 
             if ($existingTicket) {
+                // Check if ANY closed ticket exists for this complaint
+                $hasClosedTicket = InitialCustomerInformation::where('complaint_id', $comsRecord->id)
+                    ->where('case_status', 'Closed')
+                    ->exists();
+
+                if ($hasClosedTicket) {
+                    // If there are closed tickets, check if there's also an open ticket (not closed)
+                    $openTicket = InitialCustomerInformation::where('complaint_id', $comsRecord->id)
+                        ->where('case_status', '!=', 'Closed')
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+
+                    if ($openTicket) {
+                        // There's an open ticket, return it for updating
+                        $currentEscalation = $openTicket->escalation_level;
+                        $nextEscalation = $this->getNextEscalationLevel($currentEscalation);
+
+                        // Check if happy call exists for this ticket
+                        $hasHappyCall = HappyCallStatus::where('ici_id', $openTicket->id)->exists();
+
+                        return response()->json([
+                            'success' => true,
+                            'exists' => true,
+                            'ticket_number' => $openTicket->ticket_number,
+                            'current_escalation' => $currentEscalation,
+                            'next_escalation' => $nextEscalation,
+                            'display_escalation' => $nextEscalation,
+                            'escalation_updated' => true,
+                            'ticket_data' => [
+                                'service_center' => $openTicket->service_center,
+                                'case_status' => $openTicket->case_status,
+                                'complaint_category' => $openTicket->complaint_category,
+                                'agent_name' => $openTicket->agent_name,
+                                'reason_of_escalation' => $openTicket->reason_of_escalation,
+                                'escalation_level' => $nextEscalation,
+                                'voice_of_customer' => $openTicket->voice_of_customer,
+                                'complaint_escalation_date' => $openTicket->complaint_escalation_date
+                                    ? Carbon::parse($openTicket->complaint_escalation_date)->format('Y-m-d')
+                                    : '',
+                                'has_happy_call' => $hasHappyCall,
+                            ]
+                        ]);
+                    } else {
+                        // No open ticket exists, generate a new ticket
+                        $newTicketNumber = $this->generateTicketNumber();
+
+                        return response()->json([
+                            'success' => true,
+                            'exists' => false,
+                            'ticket_number' => $newTicketNumber,
+                            'message' => 'Previous ticket was closed. New ticket generated for this complaint number.',
+                            'complaint_number' => $complaintNumber,
+                            'is_new_ticket' => true,
+                            'ticket_data' => [
+                                'escalation_level' => 'Low'
+                            ]
+                        ]);
+                    }
+                }
+
                 // Update escalation level automatically on each check
                 $currentEscalation = $existingTicket->escalation_level;
                 $nextEscalation = $this->getNextEscalationLevel($currentEscalation);
@@ -589,6 +711,83 @@ class AgentController extends Controller
         }
     }
 
+
+    /**
+     * Get all closed tickets for a specific complaint number
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getComplaintHistory(Request $request)
+    {
+        try {
+            $complaintNumber = $request->input('complaint_number');
+
+            \Log::info('getComplaintHistory called', ['complaint_number' => $complaintNumber]);
+
+            if (!$complaintNumber) {
+                \Log::error('Complaint number is required but not provided');
+                return response()->json(['error' => 'Complaint number is required'], 400);
+            }
+
+            // Find COMS record for the complaint number
+            $comsRecord = Coms::where('complaint_number', $complaintNumber)->first();
+
+            if (!$comsRecord) {
+                \Log::info('No COMS record found for complaint number', ['complaint_number' => $complaintNumber]);
+                return response()->json(['history' => []]);
+            }
+
+            \Log::info('Found COMS record', ['coms_id' => $comsRecord->id, 'complaint_number' => $comsRecord->complaint_number]);
+
+            // Get all closed tickets for this complaint number
+            $closedTickets = InitialCustomerInformation::where('complaint_id', $comsRecord->id)
+                ->where('case_status', 'Closed')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            \Log::info('Found closed tickets', ['count' => $closedTickets->count(), 'coms_id' => $comsRecord->id]);
+
+            $history = [];
+
+            foreach ($closedTickets as $ici) {
+                $history[] = [
+                    'complaint_number' => $comsRecord->complaint_number,
+                    'job' => $comsRecord->job,
+                    'coms_complaint_date' => $comsRecord->coms_complaint_date,
+                    'job_type' => $comsRecord->job_type,
+                    'customer_name' => $comsRecord->customer_name,
+                    'technician_name' => $comsRecord->technician_name,
+                    'date_of_purchase' => $comsRecord->date_of_purchase,
+                    'product' => $comsRecord->product,
+                    'job_status' => $comsRecord->job_status,
+                    'problem' => $comsRecord->problem,
+                    'work_done' => $comsRecord->work_done,
+                    'ticket_number' => $ici->ticket_number,
+                    'case_status' => $ici->case_status,
+                    'escalation_level' => $ici->escalation_level,
+                    'complaint_escalation_date' => $ici->complaint_escalation_date,
+                    'closed_date' => $ici->updated_at ? $ici->updated_at->format('Y-m-d H:i:s') : null,
+                    'created_at' => $ici->created_at ? $ici->created_at->format('Y-m-d H:i:s') : null,
+                ];
+            }
+
+            \Log::info('Returning history', ['history_count' => count($history)]);
+            return response()->json(['history' => $history]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching complaint history', [
+                'error' => $e->getMessage(),
+                'complaint_number' => $request->input('complaint_number'),
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Unable to fetch complaint history'
+            ], 500);
+        }
+    }
 
     /**
      * Fetch COMS data from API and store in database
@@ -1032,67 +1231,6 @@ class AgentController extends Controller
         ]);
     }
 
-    /**
-     * Get complaint history by contact number
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getComplaintHistory(Request $request)
-    {
-        try {
-            $contactNo = $request->input('contact_no');
-
-            if (!$contactNo) {
-                return response()->json(['error' => 'Contact number is required'], 400);
-            }
-
-            // Find all COMS records with the same contact number
-            $comsRecords = Coms::where('contact_number', $contactNo)->get();
-
-            if ($comsRecords->isEmpty()) {
-                return response()->json(['history' => []]);
-            }
-
-            $history = [];
-
-            foreach ($comsRecords as $coms) {
-                // Get associated ICI record if exists
-                $ici = InitialCustomerInformation::where('complaint_id', $coms->id)->first();
-
-                $history[] = [
-                    'complaint_number' => $coms->complaint_number,
-                    'job' => $coms->job,
-                    'coms_complaint_date' => $coms->coms_complaint_date,
-                    'job_type' => $coms->job_type,
-                    'customer_name' => $coms->customer_name,
-                    'technician_name' => $coms->technician_name,
-                    'date_of_purchase' => $coms->date_of_purchase,
-                    'product' => $coms->product,
-                    'job_status' => $coms->job_status,
-                    'problem' => $coms->problem,
-                    'work_done' => $coms->work_done,
-                    'ticket_number' => $ici ? $ici->ticket_number : null,
-                    'case_status' => $ici ? $ici->case_status : null,
-                    'escalation_level' => $ici ? $ici->escalation_level : null,
-                    'complaint_escalation_date' => $ici ? $ici->complaint_escalation_date : null,
-                ];
-            }
-
-            return response()->json(['history' => $history]);
-
-        } catch (\Exception $e) {
-            Log::error('Error fetching complaint history', [
-                'error' => $e->getMessage(),
-                'contact_no' => $request->input('contact_no'),
-                'user_id' => auth()->id(),
-            ]);
-
-            return response()->json([
-                'error' => 'Unable to fetch complaint history'
-            ], 500);
-        }
-    }
 
 
 }

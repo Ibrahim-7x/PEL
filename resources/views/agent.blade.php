@@ -486,9 +486,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Fields populated successfully
 
-                // Fetch and display complaint history for the contact number
-                if (data.ContactNo) {
-                    fetchComplaintHistory(data.ContactNo);
+                // Fetch and display complaint history for the complaint number
+                if (complaintNumber) {
+                    fetchComplaintHistory(complaintNumber);
                 }
 
             })
@@ -533,8 +533,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to fetch and display complaint history
-    function fetchComplaintHistory(contactNo) {
-        // Fetch complaint history
+    function fetchComplaintHistory(complaintNumber) {
+        console.log('Fetching history for complaint number:', complaintNumber);
 
         fetch('{{ route("complaint.history") }}', {
             method: 'POST',
@@ -544,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                contact_no: contactNo
+                complaint_number: complaintNumber
             })
         })
         .then(response => response.json())
@@ -557,7 +557,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (!data.history || data.history.length === 0) {
-                historyContent.innerHTML = '<p class="text-muted">No previous complaints found for this contact number.</p>';
+                historyContent.innerHTML = '<p class="text-muted">No previous ticket found for this complaint number.</p>';
                 return;
             }
 
@@ -586,7 +586,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             historyHtml += '</tbody></table></div>';
-            historyHtml += '<small class="text-muted">Showing ' + data.history.length + ' complaint(s) for this contact number.</small>';
+            historyHtml += '<small class="text-muted">Showing ' + data.history.length + ' closed ticket(s) for this Complaint number.</small>';
 
             historyContent.innerHTML = historyHtml;
 
